@@ -1825,6 +1825,26 @@ const generateWAMessageContent = async (message, options) => {
 			capabilityMetadata: { capabilities: caps }
 		})
 	}
+	if ('botThreadInfo' in message && message.botThreadInfo) {
+		const bt = message.botThreadInfo
+		const threadTypeEnum = WAProto_1.proto.AIThreadInfo.AIThreadClientInfo.AIThreadType
+		const threadTypeMap = Object.fromEntries(Object.entries(threadTypeEnum).map(([k, v]) => [k.toLowerCase(), v]))
+		const existing = m.messageContextInfo?.botMetadata
+			? WAProto_1.proto.BotMetadata.toObject(m.messageContextInfo.botMetadata)
+			: {}
+		m.messageContextInfo = m.messageContextInfo || {}
+		m.messageContextInfo.botMetadata = WAProto_1.proto.BotMetadata.fromObject({
+			...existing,
+			botThreadInfo: {
+				clientInfo: {
+					type: typeof bt.type === 'string'
+						? (threadTypeMap[bt.type.toLowerCase()] ?? threadTypeEnum.UNKNOWN)
+						: (bt.type ?? threadTypeEnum.UNKNOWN),
+					sourceChatJid: bt.sourceChatJid || ''
+				}
+			}
+		})
+	}
 	if ('messageAssociation' in message && message.messageAssociation) {
 		const ma = message.messageAssociation
 		const assocTypeEnum = WAProto_1.proto.MessageAssociation.AssociationType

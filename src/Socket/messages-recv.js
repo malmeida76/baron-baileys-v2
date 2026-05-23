@@ -124,6 +124,48 @@ const makeMessagesRecvSocket = config => {
 		}, 8000)
 		return sendPeerDataOperationMessage(pdoMessage)
 	}
+	/**
+	 * Request a Waffle (Meta-account) linking nonce from the paired phone.
+	 * The phone responds via a PeerDataOperationRequestResponseMessage containing
+	 * a WaffleNonceFetchResponse with the nonce needed for Meta account linking.
+	 */
+	const requestWaffleNonce = async () => {
+		if (!authState.creds.me?.id) {
+			throw new boom_1.Boom('Not authenticated')
+		}
+		return sendPeerDataOperationMessage({
+			peerDataOperationRequestType: index_js_1.proto.Message.PeerDataOperationRequestType.WAFFLE_LINKING_NONCE_FETCH
+		})
+	}
+	/**
+	 * Request a Companion Canonical User nonce from the paired phone.
+	 * Used during companion linking to canonicalize the user identity across devices.
+	 * The phone responds with a CompanionCanonicalUserNonceFetchResponse (nonce + waFbid).
+	 *
+	 * @param {string} [registrationTraceId] - Optional trace ID for this registration attempt.
+	 */
+	const requestCompanionCanonicalNonce = async (registrationTraceId) => {
+		if (!authState.creds.me?.id) {
+			throw new boom_1.Boom('Not authenticated')
+		}
+		return sendPeerDataOperationMessage({
+			companionCanonicalUserNonceFetchRequest: registrationTraceId ? { registrationTraceId } : {},
+			peerDataOperationRequestType: index_js_1.proto.Message.PeerDataOperationRequestType.COMPANION_CANONICAL_USER_NONCE_FETCH
+		})
+	}
+	/**
+	 * Request a Companion Meta nonce from the paired phone.
+	 * Used during Meta-account companion linking flow.
+	 * The phone responds with a CompanionMetaNonceFetchResponse (nonce).
+	 */
+	const requestCompanionMetaNonce = async () => {
+		if (!authState.creds.me?.id) {
+			throw new boom_1.Boom('Not authenticated')
+		}
+		return sendPeerDataOperationMessage({
+			peerDataOperationRequestType: index_js_1.proto.Message.PeerDataOperationRequestType.COMPANION_META_NONCE_FETCH
+		})
+	}
 	// Handles mex newsletter notifications
 	const handleMexNewsletterNotification = async node => {
 		const mexNode = (0, WABinary_1.getBinaryNodeChild)(node, 'mex')
@@ -2039,6 +2081,9 @@ const makeMessagesRecvSocket = config => {
 		setNodeLoggerListener,
 		fetchMessageHistory,
 		requestPlaceholderResend,
+		requestWaffleNonce,
+		requestCompanionCanonicalNonce,
+		requestCompanionMetaNonce,
 		messageRetryManager
 	}
 }

@@ -35,8 +35,40 @@ A high-performance WhatsApp Web library built on [Baileys](https://github.com/Wh
 - [User Queries](#user-queries)
 - [Change Profile](#change-profile)
 - [Chat Modifiers](#chat-modifiers)
+- [MEX — WhatsApp's Internal GraphQL](#mex--whatsapps-internal-graphql)
 - [Writing Custom Functionality](#writing-custom-functionality)
 - [Rust WASM Bridge](#rust-wasm-bridge)
+
+---
+
+## MEX — WhatsApp's Internal GraphQL
+
+All WhatsApp features (privacy, passkeys, profiles, usernames, integrity checks, …) run over MEX — WhatsApp's GraphQL-over-WebSocket protocol. Every method is available directly on your socket:
+
+```js
+// Privacy
+await sock.setPrivacySetting('LAST_SEEN', 'CONTACTS')   // UPPERCASE enums
+await sock.updateGroupsAddPrivacy('contact_blacklist')   // lowercase IQ helpers also available
+
+// Contact integrity — verify a JID is on WhatsApp before opening a chat
+const result = await sock.contactIntegrityQuery(['491234567890@s.whatsapp.net'])
+
+// Username lookup
+const user = await sock.findUserByUsername('baron')
+// { jid: '49123456789@s.whatsapp.net', contact: false } or null
+
+// About text
+const abouts = await sock.getTextStatusList(['491234567890@s.whatsapp.net'])
+
+// Error handling — all MEX methods throw Boom on failure
+try {
+    await sock.setPrivacySetting('LAST_SEEN', 'NONE')
+} catch (err) {
+    // err.output.statusCode: 400 bad request, 403 not available, 404 not found
+}
+```
+
+See [MEX.md](MEX.md) for full documentation.
 
 ---
 
@@ -699,19 +731,35 @@ await sock.updateBlockStatus(jid, 'block')  // block | unblock
 
 // Get settings
 const privacy = await sock.fetchPrivacySettings()
+// { last: 'all', online: 'all', profile: 'contacts', groupadd: 'all', calladd: 'all', ... }
+
+// Force fresh fetch (bypass cache)
+const fresh = await sock.fetchPrivacySettings(true)
 
 // Get blocklist
 const list = await sock.fetchBlocklist()
 
-// Update individual settings
+// Update individual settings (IQ-based, lowercase values, works on all accounts)
 await sock.updateLastSeenPrivacy('contacts')           // all | contacts | contact_blacklist | none
 await sock.updateOnlinePrivacy('all')
 await sock.updateProfilePicturePrivacy('contacts')
 await sock.updateStatusPrivacy('contacts')
 await sock.updateReadReceiptsPrivacy('all')
 await sock.updateGroupsAddPrivacy('contacts')
-await sock.updateDefaultDisappearingMode(86400)
+await sock.updateCallPrivacy('all')
+await sock.updateDefaultDisappearingMode(86400)        // seconds, 0 = off
+
+// Set via MEX GraphQL (UPPERCASE values required)
+await sock.setPrivacySetting('LAST_SEEN', 'CONTACTS')
+await sock.setPrivacySetting('GROUPS', 'CONTACT_BLACKLIST')
+await sock.setPrivacySetting('CALLS', 'NONE')
+
+// Manage contact lists for CONTACT_BLACKLIST / CONTACTS settings
+await sock.updatePrivacyContactList('groupadd', 'contact_blacklist', [jid1, jid2])
+const current = await sock.getPrivacyContactList('groupadd', 'contact_blacklist')
 ```
+
+See [MEX.md](MEX.md) for full MEX usage and error handling.
 
 ---
 
@@ -719,14 +767,18 @@ await sock.updateDefaultDisappearingMode(86400)
 
 ```js
 // Check if number exists on WA
-const [result] = await sock.onWhatsApp('49123456789')
-console.log(result.exists, result.jid)
+const results = await sock.onWhatsApp('49123456789')
+// results[0] === { jid: '49123456789@s.whatsapp.net', exists: true }
 
 // Profile picture
 const ppUrl = await sock.profilePictureUrl(jid, 'image')
 
-// Status text
+// Status text (legacy)
 const status = await sock.fetchStatus(jid)
+
+// About text (MEX)
+const abouts = await sock.getTextStatusList([jid])
+// [{ jid, text: 'Hey there!', emoji: '👋', timestamp: 1234567890 }]
 
 // Business profile
 const biz = await sock.getBusinessProfile(jid)
@@ -737,6 +789,13 @@ sock.ev.on('presence.update', ({ id, presences }) => { })
 
 // Chat history
 await sock.fetchMessageHistory(50, oldestMsg.key, oldestMsg.messageTimestamp)
+
+// Find user by @username
+const user = await sock.findUserByUsername('someusername')
+// { jid: '49123456789@s.whatsapp.net', contact: false } or null
+
+// Verify a JID before opening a chat
+const integrity = await sock.contactIntegrityQuery([jid])
 ```
 
 ---

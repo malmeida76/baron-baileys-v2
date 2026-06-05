@@ -243,7 +243,11 @@ const makeRegistrationSocket = sock => {
 		mexQuery({}, REGISTRATION_MEX_IDS.WA_BINARY_DEMO, 'xwa2_wa_binary_demo')
 
 	const startChatContextIntegrityQuery = jids =>
-		mexQuery({ jids }, REGISTRATION_MEX_IDS.START_CHAT_CONTEXT_INTEGRITY, 'xwa2_fetch_wa_users')
+		mexQuery(
+			{ users: jids.map(jid => ({ jid })), use_case: 'START_CHAT_CONTEXT' },
+			REGISTRATION_MEX_IDS.START_CHAT_CONTEXT_INTEGRITY,
+			'xwa2_fetch_wa_users'
+		)
 
 	const messageCappingOteRequest = () =>
 		mexQuery({}, REGISTRATION_MEX_IDS.MESSAGE_CAPPING_OTE, 'xwa2_message_capping_ote_request')

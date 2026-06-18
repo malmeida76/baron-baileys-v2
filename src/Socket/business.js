@@ -268,6 +268,40 @@ const makeBusinessSocket = config => {
 		})
 		return (0, business_1.parseOrderDetailsNode)(result)
 	}
+	/**
+	 * Get linked Facebook/Instagram accounts (WhatsApp-as-a-page linking).
+	 * Ported from WhatsApp Web's WASmaxBizLinkingGetLinkedAccountsRPC.
+	 * @returns {Promise<{ pageInfo: object, linkState?: string, node: object } | undefined>}
+	 */
+	const getLinkedAccounts = async () => {
+		const result = await query({
+			tag: 'iq',
+			attrs: { to: WABinary_1.S_WHATSAPP_NET, type: 'get', xmlns: 'fb:thrift_iq', smax_id: '42' },
+			content: [{ tag: 'linked_accounts', attrs: {} }]
+		})
+		const fbPage = (0, WABinary_1.getBinaryNodeChild)(result, 'fb_page')
+		if (!fbPage) return undefined
+		const button = (0, WABinary_1.getBinaryNodeChild)(fbPage, 'whatsapp_as_page_button')
+		return { pageInfo: fbPage.attrs, linkState: button?.attrs?.state, node: fbPage }
+	}
+	/**
+	 * Get business eligibility for the given features (meta_verified / marketing_messages / genai).
+	 * Ported from WhatsApp Web's WASmaxBizMarketingMessageGetBusinessEligibilityRPC.
+	 * @param {{ metaVerified?: any, marketingMessages?: any, genai?: any }} [features]
+	 */
+	const getBusinessEligibility = async (features = {}) => {
+		const attrs = {}
+		if (features.metaVerified !== undefined) attrs.meta_verified = String(features.metaVerified)
+		if (features.marketingMessages !== undefined) attrs.marketing_messages = String(features.marketingMessages)
+		if (features.genai !== undefined) attrs.genai = String(features.genai)
+		const result = await query({
+			tag: 'iq',
+			attrs: { to: WABinary_1.S_WHATSAPP_NET, type: 'get', xmlns: 'w:biz', smax_id: '139' },
+			content: [{ tag: 'features', attrs }]
+		})
+		const mv = (0, WABinary_1.getBinaryNodeChild)(result, 'meta_verified')
+		return mv ? { status: mv.attrs?.status, ...mv.attrs } : undefined
+	}
 	const productUpdate = async (productId, update) => {
 		update = await (0, business_1.uploadingNecessaryImagesOfProduct)(update, waUploadToServer)
 		const editNode = (0, business_1.toProductNode)(productId, update)
@@ -373,6 +407,8 @@ const makeBusinessSocket = config => {
 		...sock,
 		logger: config.logger,
 		getOrderDetails,
+		getLinkedAccounts,
+		getBusinessEligibility,
 		getCatalog,
 		getCollections,
 		productCreate,

@@ -1201,6 +1201,38 @@ const makeMessagesRecvSocket = config => {
 					}
 				}
 				break
+			case 'business':
+				// SMB privacy / data-sharing settings sync push
+				// (WhatsApp Web: WASmaxInBizSettingsSyncPrivacySettingRequest)
+				if (child?.tag === 'privacy') {
+					ev.emit('business.privacy-settings-sync', {
+						jid: from,
+						categories: (0, WABinary_1.getBinaryNodeChildren)(child, 'category').map(c => ({
+							name: c.attrs.name,
+							value: c.attrs.value
+						})),
+						attrs: child.attrs
+					})
+				}
+				break
+			case 'hosted':
+				// Coexistence (WhatsApp <-> Messenger/Instagram) onboarding/offboarding push
+				// (WhatsApp Web: WASmaxInCoexistenceOnboarding/OffboardingNotification)
+				if (child?.tag === 'onboarding_status') {
+					ev.emit('coexistence.update', {
+						jid: from,
+						kind: 'onboarding',
+						status: child.attrs.status,
+						productSurface: child.attrs['product_surface']
+					})
+				} else if (child?.tag === 'offboarding') {
+					ev.emit('coexistence.update', {
+						jid: from,
+						kind: 'offboarding',
+						productSurface: child.attrs['product_surface']
+					})
+				}
+				break
 			case 'link_code_companion_reg':
 				const linkCodeCompanionReg = (0, WABinary_1.getBinaryNodeChild)(node, 'link_code_companion_reg')
 				const ref = toRequiredBuffer(
@@ -2041,6 +2073,54 @@ const makeMessagesRecvSocket = config => {
 			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack call'))
 		}
 	}
+	// Some accounts receive call signalling as TOP-LEVEL stanzas (<offer>, <terminate>,
+	// <mute_v2>, <transport>, … each with a call-id) instead of wrapped in <call>.
+	// This additively handles those: emit a 'call' event for state stanzas and ack ALL
+	// of them (otherwise WhatsApp keeps redelivering). The <call> path above is untouched.
+	const CALL_STATE_TAGS = new Set(['offer', 'offer_notice', 'terminate', 'accept', 'reject', 'preaccept'])
+	const handleStandaloneCallStanza = async node => {
+		try {
+			if (!CALL_STATE_TAGS.has(node.tag)) {
+				return // media/relay signalling (transport, video, duration, mute_v2, lobby, …): ack only
+			}
+			const { attrs } = node
+			const status = (0, Utils_1.getCallStatusFromNode)(node)
+			const callId = attrs['call-id']
+			const from = attrs.from || attrs['call-creator']
+			const call = {
+				chatId: attrs.from || from,
+				from,
+				callerPn: attrs['caller_pn'],
+				id: callId,
+				date: attrs.t ? new Date(+attrs.t * 1000) : new Date(),
+				offline: !!attrs.offline,
+				status
+			}
+			if (status === 'offer') {
+				call.isVideo = !!(0, WABinary_1.getBinaryNodeChild)(node, 'video')
+				call.isGroup = attrs.type === 'group' || !!attrs['group-jid']
+				call.groupJid = attrs['group-jid']
+				if (callId) {
+					await callOfferCache.set(callId, call)
+				}
+			}
+			const existingCall = callId ? await callOfferCache.get(callId) : undefined
+			if (existingCall) {
+				call.isVideo = existingCall.isVideo
+				call.isGroup = existingCall.isGroup
+				call.callerPn = call.callerPn || existingCall.callerPn
+			}
+			if (callId && (status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate')) {
+				await callOfferCache.del(callId)
+			}
+			await normalizeCallEventJids(call, node)
+			ev.emit('call', [call])
+		} catch (error) {
+			logger.error({ error, node: (0, WABinary_1.binaryNodeToString)(node) }, 'error handling standalone call stanza')
+		} finally {
+			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack standalone call'))
+		}
+	}
 	const handleBadAck = async ({ attrs }) => {
 		const key = { remoteJid: attrs.from, fromMe: true, id: attrs.id }
 		// WARNING: REFRAIN FROM ENABLING THIS FOR NOW. IT WILL CAUSE A LOOP
@@ -2148,6 +2228,16 @@ const makeMessagesRecvSocket = config => {
 		nodelogger(node)
 		await processNode('call', node, 'handling call', handleCall)
 	})
+	// additive: top-level call-signalling stanzas (some accounts send these instead of <call>)
+	for (const callTag of [
+		'offer', 'offer_notice', 'terminate', 'accept', 'reject', 'preaccept',
+		'transport', 'video', 'duration', 'mute_v2', 'lobby', 'heartbeat', 'relaylatency', 'link_query'
+	]) {
+		ws.on('CB:' + callTag, node => {
+			nodelogger(node)
+			handleStandaloneCallStanza(node).catch(error => onUnexpectedError(error, 'handling standalone call stanza'))
+		})
+	}
 	ws.on('CB:receipt', async node => {
 		nodelogger(node)
 		await processNode('receipt', node, 'handling receipt', handleReceipt)

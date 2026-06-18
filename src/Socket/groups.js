@@ -53,6 +53,90 @@ const makeGroupsSocket = config => {
 		const result = await groupQuery(jid, 'get', [{ tag: 'query', attrs: { request: 'interactive' } }])
 		return (0, exports.extractGroupMetadata)(result)
 	}
+	/**
+	 * Acknowledge a group. Ported from WhatsApp Web's WASmaxGroupsAcknowledgeGroupRPC
+	 * (`<iq to=jid xmlns=w:g2 type=set><ack/></iq>`).
+	 */
+	const groupAcknowledge = async jid => {
+		await groupQuery(jid, 'set', [{ tag: 'ack', attrs: {} }])
+	}
+	/**
+	 * Get the participants of a community's linked/sub groups. Ported from
+	 * WhatsApp Web's WASmaxGroupsGetLinkedGroupsParticipantsRPC.
+	 * @returns {Promise<Array<{ jid: string, phoneNumber?: string }>>}
+	 */
+	const groupGetLinkedParticipants = async jid => {
+		const result = await groupQuery(jid, 'get', [{ tag: 'linked_groups_participants', attrs: {} }])
+		const node = (0, WABinary_1.getBinaryNodeChild)(result, 'linked_groups_participants')
+		return (0, WABinary_1.getBinaryNodeChildren)(node, 'participant').map(p => ({
+			jid: p.attrs.jid,
+			phoneNumber: p.attrs.phone_number || p.attrs.pn || undefined
+		}))
+	}
+	/**
+	 * Join a community's linked/sub group (may raise a membership approval request).
+	 * Ported from WhatsApp Web's WASmaxGroupsJoinLinkedGroupRPC.
+	 * @param {string} parentJid community/parent group to address
+	 * @param {string} linkedGroupJid linked/sub group to join
+	 * @param {string} [type]
+	 */
+	const groupJoinLinked = async (parentJid, linkedGroupJid, type) => {
+		const result = await groupQuery(parentJid, 'set', [
+			{ tag: 'join_linked_group', attrs: { jid: linkedGroupJid, ...(type ? { type } : {}) } }
+		])
+		return { approvalRequested: !!(0, WABinary_1.getBinaryNodeChild)(result, 'membership_approval_request') }
+	}
+	/**
+	 * Batch-fetch group profile pictures via w:g2. Ported from WhatsApp Web's
+	 * WASmaxGroupsGetGroupProfilePicturesRPC. NOTE: untested against live WhatsApp —
+	 * for a single group prefer profilePictureUrl().
+	 * @param {string[]} jids group jids
+	 * @param {'preview' | 'image'} [type]
+	 */
+	const getGroupProfilePictures = async (jids, type = 'preview') => {
+		const result = await groupQuery(WABinary_1.S_WHATSAPP_NET, 'get', [
+			{
+				tag: 'pictures',
+				attrs: {},
+				content: jids.map(id => ({ tag: 'picture', attrs: { id, type } }))
+			}
+		])
+		return (0, WABinary_1.getBinaryNodeChildren)(result, 'picture').map(pic => ({
+			jid: pic.attrs.id || pic.attrs.jid,
+			type: pic.attrs.type,
+			directPath: pic.attrs['direct_path'],
+			url: pic.attrs.url
+		}))
+	}
+	/**
+	 * Create a sub-group suggestion for a community. Ported from WhatsApp Web's
+	 * WASmaxGroupsCreateSubGroupSuggestionRPC. The suggestion body (new vs existing
+	 * groups) is caller-provided. NOTE: untested against live WhatsApp.
+	 * @param {string} parentJid community/parent group to address
+	 * @param {Array<{ tag: string, attrs?: object, content?: any }>} suggestion child node(s)
+	 */
+	const groupCreateSubGroupSuggestion = async (parentJid, suggestion) => {
+		await groupQuery(parentJid, 'set', [{ tag: 'sub_group_suggestion', attrs: {}, content: suggestion }])
+	}
+	/**
+	 * Approve or reject sub-group suggestions for a community. Ported from WhatsApp
+	 * Web's WASmaxGroupsSubGroupSuggestionsActionRPC. NOTE: untested against live WhatsApp.
+	 * @param {string} parentJid community/parent group to address
+	 * @param {'approve' | 'reject'} action
+	 * @param {Array<{ creator: string, jid?: string }>} suggestions
+	 */
+	const groupSubGroupSuggestionsAction = async (parentJid, action, suggestions) => {
+		await groupQuery(parentJid, 'set', [
+			{
+				tag: action,
+				attrs: {},
+				content: suggestions.map(s => ({
+					tag: 'sub_group_suggestion',
+					attrs: { creator: s.creator, ...(s.jid ? { jid: s.jid } : {}) }
+				}))
+			}
+		])
+	}
 	const groupFetchAllParticipating = async () => {
 		const result = await query({
 			tag: 'iq',
@@ -100,6 +184,12 @@ const makeGroupsSocket = config => {
 	return {
 		...sock,
 		groupMetadata,
+		groupAcknowledge,
+		groupGetLinkedParticipants,
+		groupJoinLinked,
+		getGroupProfilePictures,
+		groupCreateSubGroupSuggestion,
+		groupSubGroupSuggestionsAction,
 		groupCreate: async (subject, participants) => {
 			const key = (0, Utils_1.generateMessageIDV2)()
 			const result = await groupQuery('@g.us', 'set', [
@@ -637,7 +727,10 @@ const extractGroupMetadata = result => {
 		isCommunityAnnounce: !!(0, WABinary_1.getBinaryNodeChild)(group, 'default_sub_group'),
 		joinApprovalMode: !!membershipApprovalNode,
 		memberAddMode,
-		communityMemberAddGroupMode: communityMemberAddGroupNode?.attrs.state || undefined,
+		memberShareHistoryMode: (0, WABinary_1.getBinaryNodeChildString)(group, 'member_share_group_history_mode') || undefined,
+			memberLinkMode: (0, WABinary_1.getBinaryNodeChildString)(group, 'member_link_mode') || undefined,
+			limitSharing: !!(0, WABinary_1.getBinaryNodeChild)(group, 'limit_sharing_enabled'),
+			communityMemberAddGroupMode: communityMemberAddGroupNode?.attrs.state || undefined,
 		capiCreatedGroup: group.attrs.capi_created === 'true' || undefined,
 		appealStatus: group.attrs.appeal_status || undefined,
 		isSubGroupHidden: group.attrs.sub_group_visibility === 'hidden' || undefined,

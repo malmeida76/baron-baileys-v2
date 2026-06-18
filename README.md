@@ -68,7 +68,7 @@ try {
 }
 ```
 
-See [MEX.md](MEX.md) for full documentation.
+See [MEX.md](documentation/MEX.md) for full documentation.
 
 ---
 
@@ -76,18 +76,19 @@ See [MEX.md](MEX.md) for full documentation.
 
 | Topic | File |
 |-------|------|
-| MEX — WhatsApp's internal GraphQL protocol | [MEX.md](MEX.md) |
-| USync — Bulk user data queries (devices, status, picture, LID) | [USYNC.md](USYNC.md) |
-| HTTPS GraphQL — Meta AI, Events, Payments | [GRAPHQL.md](GRAPHQL.md) |
-| Privacy, Profile & Account | [PRIVACY.md](PRIVACY.md) |
-| Registration, Passkeys & Account Management | [REGISTRATION.md](REGISTRATION.md) |
-| Managed Accounts, Payments Passkey & IPLS | [MANAGED-ACCOUNT.md](MANAGED-ACCOUNT.md) |
-| Communities & AI Groups | [COMMUNITIES.md](COMMUNITIES.md) |
-| Interoperability (BirdyChat, Haiket, DMA) | [INTEROP.md](INTEROP.md) |
-| Username (`@username`) | [USERNAME.md](USERNAME.md) |
-| Anti-Ban System | [ANTIBAN.md](ANTIBAN.md) |
-| Ban & Enforcement System (APK internals) | [BAN-SYSTEM.md](BAN-SYSTEM.md) |
-| WhatsApp Protocol Reference (APK namespaces) | [PROTOCOLS.md](PROTOCOLS.md) |
+| MEX — WhatsApp's internal GraphQL protocol | [MEX.md](documentation/MEX.md) |
+| USync — Bulk user data queries (devices, status, picture, LID) | [USYNC.md](documentation/USYNC.md) |
+| HTTPS GraphQL — Meta AI, Events, Payments | [GRAPHQL.md](documentation/GRAPHQL.md) |
+| Privacy, Profile & Account | [PRIVACY.md](documentation/PRIVACY.md) |
+| Registration, Passkeys & Account Management | [REGISTRATION.md](documentation/REGISTRATION.md) |
+| Managed Accounts, Payments Passkey & IPLS | [MANAGED-ACCOUNT.md](documentation/MANAGED-ACCOUNT.md) |
+| Communities & AI Groups | [COMMUNITIES.md](documentation/COMMUNITIES.md) |
+| Interoperability (BirdyChat, Haiket, DMA) | [INTEROP.md](documentation/INTEROP.md) |
+| Username (`@username`) | [USERNAME.md](documentation/USERNAME.md) |
+| Anti-Ban System | [ANTIBAN.md](documentation/ANTIBAN.md) |
+| Ban & Enforcement System (APK internals) | [BAN-SYSTEM.md](documentation/BAN-SYSTEM.md) |
+| WhatsApp Protocol Reference (APK namespaces) | [PROTOCOLS.md](documentation/PROTOCOLS.md) |
+| WA-Web Protocol Port (chat-block, call links, group settings, coexistence) | [WA-WEB-PORT.md](documentation/WA-WEB-PORT.md) |
 
 ---
 
@@ -115,6 +116,8 @@ See [MEX.md](MEX.md) for full documentation.
 | Album messages | Send multiple media as an album |
 | Sticker packs | Sticker pack message support |
 | Newsletter messages | Follower invite messages |
+| WA-Web protocol port | Chat-block toggle, call-link waiting room, community sub-group ops, group sharing settings, business eligibility, opt-out/push, coexistence events — [WA-WEB-PORT.md](documentation/WA-WEB-PORT.md) |
+| Top-level call signalling | Emits `call` for both `<call>`-wrapped and top-level `<offer>`/`<terminate>` stanzas (+ acks them) |
 
 ---
 
@@ -303,9 +306,18 @@ sock.ev.on('server.config', config => { })
 ### Calls
 
 ```js
+// `call` fires for both <call>-wrapped and top-level (<offer>/<terminate>) signalling
 sock.ev.on('call', calls => { })
 sock.ev.on('call.scheduled', ({ call }) => { })
 sock.ev.on('call.schedule-cancelled', ({ call }) => { })
+
+// Call links — create + toggle the link's waiting room
+const token = await sock.createCallLink('audio')
+await sock.toggleCallLinkWaitingRoom(token, true, 'audio')
+
+// WA-Web coexistence (FB/IG) & business privacy-sync pushes
+sock.ev.on('coexistence.update', u => { })  // { kind: 'onboarding' | 'offboarding', status?, productSurface? }
+sock.ev.on('business.privacy-settings-sync', s => { })
 ```
 
 ### Labels
@@ -707,7 +719,7 @@ const code = await sock.groupInviteCode(jid)
 await sock.groupRevokeInvite(jid)
 await sock.groupAcceptInvite(code)
 
-// Metadata
+// Metadata (now also returns memberShareHistoryMode, memberLinkMode, limitSharing)
 const meta = await sock.groupMetadata(jid)
 
 // Join requests
@@ -719,6 +731,14 @@ const all = await sock.groupFetchAllParticipating()
 
 // Ephemeral
 await sock.groupToggleEphemeral(jid, 86400)  // seconds, 0 = off
+
+// Acknowledge a group
+await sock.groupAcknowledge(jid)
+
+// Communities — linked/sub-group participants, join a sub-group, batch profile pictures
+const linkedParts = await sock.groupGetLinkedParticipants(communityJid)
+await sock.groupJoinLinked(communityJid, subGroupJid)
+const pics = await sock.getGroupProfilePictures([jid1, jid2], 'preview')
 ```
 
 ---
@@ -757,9 +777,18 @@ await sock.setPrivacySetting('CALLS', 'NONE')
 // Manage contact lists for CONTACT_BLACKLIST / CONTACTS settings
 await sock.updatePrivacyContactList('groupadd', 'contact_blacklist', [jid1, jid2])
 const current = await sock.getPrivacyContactList('groupadd', 'contact_blacklist')
+
+// "Block messages from unknown accounts" toggle (WA Web w:comms:chat)
+const blockStatus = await sock.getChatBlockingStatus()   // 'blocked' | 'unblocked'
+await sock.updateChatBlockingStatus('block')             // block | unblock
+
+// Pending TOS disclosures · feature opt-out list · push config
+const notices = await sock.getUserDisclosures()
+const optOut  = await sock.getOptOutList()
+const push    = await sock.getPushConfig()
 ```
 
-See [MEX.md](MEX.md) for full MEX usage and error handling.
+See [MEX.md](documentation/MEX.md) for full MEX usage and error handling.
 
 ---
 

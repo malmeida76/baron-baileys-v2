@@ -312,6 +312,91 @@ const makeChatsSocket = config => {
 		}
 		return botList
 	}
+	/**
+	 * Get the global chat-blocking status (block messages from unknown accounts).
+	 * Ported from WhatsApp Web's WASmaxPsaChatBlockGetRPC (xmlns `w:comms:chat`).
+	 * @returns {Promise<'blocked' | 'unblocked' | undefined>}
+	 */
+	const getChatBlockingStatus = async () => {
+		const result = await query({
+			tag: 'iq',
+			attrs: {
+				to: WABinary_1.S_WHATSAPP_NET,
+				xmlns: 'w:comms:chat',
+				type: 'get'
+			},
+			content: [{ tag: 'query', attrs: {}, content: [{ tag: 'blocking_status', attrs: {} }] }]
+		})
+		const blocking =
+			(0, WABinary_1.getBinaryNodeChild)(result, 'blocking') ||
+			(0, WABinary_1.getBinaryNodeChild)((0, WABinary_1.getBinaryNodeChild)(result, 'query'), 'blocking')
+		return blocking?.attrs?.status
+	}
+	/**
+	 * Set the global chat-blocking status (block messages from unknown accounts).
+	 * Ported from WhatsApp Web's WASmaxPsaChatBlockSetRPC (xmlns `w:comms:chat`).
+	 * @param {'block' | 'unblock'} action
+	 * @returns {Promise<'blocked' | 'unblocked' | undefined>} the resulting status
+	 */
+	const updateChatBlockingStatus = async action => {
+		const result = await query({
+			tag: 'iq',
+			attrs: {
+				to: WABinary_1.S_WHATSAPP_NET,
+				xmlns: 'w:comms:chat',
+				type: 'set'
+			},
+			content: [{ tag: 'blocking', attrs: { action } }]
+		})
+		const blocking = (0, WABinary_1.getBinaryNodeChild)(result, 'blocking')
+		return blocking?.attrs?.status
+	}
+	/**
+	 * Get the user's pending TOS disclosures / notices.
+	 * Ported from WhatsApp Web's WASmaxUserNoticeGetDisclosuresRPC (xmlns `tos`).
+	 * @param {number} [t] last-seen disclosure timestamp
+	 * @returns {Promise<Array<Record<string, string>>>} the `<notice>` attributes
+	 */
+	const getUserDisclosures = async (t = 0) => {
+		const result = await query({
+			tag: 'iq',
+			attrs: { to: WABinary_1.S_WHATSAPP_NET, xmlns: 'tos', type: 'get' },
+			content: [{ tag: 'get_user_disclosures', attrs: { t: String(t) } }]
+		})
+		return (0, WABinary_1.getBinaryNodeChildren)(result, 'notice').map(n => ({ ...n.attrs }))
+	}
+	/**
+	 * Get the account opt-out list (`optoutlist` IQ). Returns the raw result node.
+	 */
+	const getOptOutList = async () => {
+		return query({
+			tag: 'iq',
+			attrs: { to: WABinary_1.S_WHATSAPP_NET, xmlns: 'optoutlist', type: 'get' }
+		})
+	}
+	/**
+	 * Get push-notification settings (`urn:xmpp:whatsapp:push`).
+	 */
+	const getPushConfig = async () => {
+		const result = await query({
+			tag: 'iq',
+			attrs: { to: WABinary_1.S_WHATSAPP_NET, xmlns: 'urn:xmpp:whatsapp:push', type: 'get' },
+			content: [{ tag: 'settings', attrs: {} }]
+		})
+		return (0, WABinary_1.getBinaryNodeChild)(result, 'settings')
+	}
+	/**
+	 * Set push-notification config (`urn:xmpp:whatsapp:push`). Mainly web push —
+	 * pass the FCM-style config (platform / endpoint / auth / p256dh).
+	 * @param {Record<string, string>} config
+	 */
+	const setPushConfig = async config => {
+		await query({
+			tag: 'iq',
+			attrs: { to: WABinary_1.S_WHATSAPP_NET, xmlns: 'urn:xmpp:whatsapp:push', type: 'set' },
+			content: [{ tag: 'config', attrs: config }]
+		})
+	}
 	const fetchStatus = async (...jids) => {
 		const usyncQuery = new WAUSync_1.USyncQuery().withStatusProtocol()
 		for (const jid of jids) {
@@ -735,6 +820,27 @@ const makeChatsSocket = config => {
 		)
 		const child = (0, WABinary_1.getBinaryNodeChild)(result, 'link_create')
 		return child?.attrs?.token
+	}
+	/**
+	 * Toggle the waiting room on an existing call link.
+	 * Ported from WhatsApp Web's WASmaxVoipWaitingRoomToggleCallLinkRPC.
+	 * @param {string} linkToken the call link token (from createCallLink)
+	 * @param {boolean} enabled
+	 * @param {'audio' | 'video'} [media]
+	 */
+	const toggleCallLinkWaitingRoom = async (linkToken, enabled, media = 'audio') => {
+		const result = await query({
+			tag: 'call',
+			attrs: { id: generateMessageTag(), to: '@call' },
+			content: [
+				{
+					tag: 'waiting_room_toggle',
+					attrs: { enabled: enabled ? '1' : '0', 'link-token': linkToken, media }
+				}
+			]
+		})
+		const child = (0, WABinary_1.getBinaryNodeChild)(result, 'waiting_room_toggle')
+		return child?.attrs
 	}
 	const sendPresenceUpdate = async (type, toJid) => {
 		const me = authState.creds.me
@@ -1607,7 +1713,14 @@ const makeChatsSocket = config => {
 		...sock,
 		serverProps,
 		createCallLink,
+		toggleCallLinkWaitingRoom,
 		getBotListV2,
+		getChatBlockingStatus,
+		updateChatBlockingStatus,
+		getUserDisclosures,
+		getOptOutList,
+		getPushConfig,
+		setPushConfig,
 		messageMutex,
 		receiptMutex,
 		appStatePatchMutex,

@@ -1,6 +1,12 @@
 'use strict'
 Object.defineProperty(exports, '__esModule', { value: true })
 exports.buildAckStanza = buildAckStanza
+// Standalone call stanzas use class="call" + type=<tag>, not class=<tag>
+const CALL_STANZA_TAGS = new Set([
+	'offer', 'offer_notice', 'terminate', 'accept', 'reject', 'preaccept',
+	'transport', 'video', 'duration', 'mute_v2', 'lobby', 'heartbeat',
+	'relaylatency', 'link_query', 'group_update'
+])
 /**
  * Builds an ACK stanza for a received node.
  * Pure function -- no I/O, no side effects.
@@ -11,13 +17,18 @@ exports.buildAckStanza = buildAckStanza
  */
 function buildAckStanza(node, errorCode, meId) {
 	const { tag, attrs } = node
+	const isCallStanza = CALL_STANZA_TAGS.has(tag)
 	const stanza = {
 		tag: 'ack',
 		attrs: {
 			id: attrs.id,
 			to: attrs.from,
-			class: tag
+			class: isCallStanza ? 'call' : tag
 		}
+	}
+	// For standalone call stanzas, WA Web puts the original tag into `type`
+	if (isCallStanza) {
+		stanza.attrs.type = tag
 	}
 	if (errorCode) {
 		stanza.attrs.error = errorCode.toString()
@@ -29,7 +40,8 @@ function buildAckStanza(node, errorCode, meId) {
 		stanza.attrs.recipient = attrs.recipient
 	}
 	// WA Web always includes type when present: `n.type || DROP_ATTR`
-	if (attrs.type) {
+	// For call stanzas the type is already set to the tag name above; don't override it.
+	if (attrs.type && !isCallStanza) {
 		stanza.attrs.type = attrs.type
 	}
 	// WA Web WAWebHandleMsgSendAck.sendAck/sendNack always include `from` for message-class ACKs

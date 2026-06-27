@@ -838,6 +838,16 @@ const makeSocket = config => {
 			content: [{ tag: 'offline_batch', attrs: { count: '100' } }]
 		})
 	})
+	ws.on('CB:ib,,thread_metadata', node => {
+		const tmNode = (0, WABinary_1.getBinaryNodeChild)(node, 'thread_metadata')
+		const items = (0, WABinary_1.getBinaryNodeChildren)(tmNode, 'item')
+		if (items.length) {
+			ev.emit('thread-metadata.update', items.map(item => ({
+				jid: item.attrs.from,
+				t: item.attrs.t ? +item.attrs.t : undefined
+			})))
+		}
+	})
 	ws.on('CB:ib,,edge_routing', node => {
 		const edgeRoutingNode = (0, WABinary_1.getBinaryNodeChild)(node, 'edge_routing')
 		const routingInfo = (0, WABinary_1.getBinaryNodeChild)(edgeRoutingNode, 'routing_info')

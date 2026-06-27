@@ -375,6 +375,28 @@ const makeChatsSocket = config => {
 		})
 	}
 	/**
+	 * Sign a blinded credential for privacy-preserving anonymous stats.
+	 * Mirrors WASmaxPrivateStatsSignCredentialRPC (xmlns `privatestats`).
+	 * @param {Buffer} blindedCredential 32-byte blinded credential
+	 * @returns {Promise<Buffer|undefined>} signed credential bytes from server
+	 */
+	const signPrivateCredential = async blindedCredential => {
+		const result = await query({
+			tag: 'iq',
+			attrs: { to: WABinary_1.S_WHATSAPP_NET, xmlns: 'privatestats', type: 'get' },
+			content: [
+				{
+					tag: 'sign_credential',
+					attrs: { version: '1' },
+					content: [{ tag: 'blinded_credential', attrs: {}, content: blindedCredential }]
+				}
+			]
+		})
+		const signedNode = (0, WABinary_1.getBinaryNodeChild)(result, 'sign_credential')
+		const signedBytes = (0, WABinary_1.getBinaryNodeChild)(signedNode, 'signed_credential')
+		return signedBytes?.content instanceof Uint8Array ? Buffer.from(signedBytes.content) : undefined
+	}
+	/**
 	 * Get push-notification settings (`urn:xmpp:whatsapp:push`).
 	 */
 	const getPushConfig = async () => {
@@ -1721,6 +1743,7 @@ const makeChatsSocket = config => {
 		getOptOutList,
 		getPushConfig,
 		setPushConfig,
+		signPrivateCredential,
 		messageMutex,
 		receiptMutex,
 		appStatePatchMutex,

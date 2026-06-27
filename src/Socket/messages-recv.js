@@ -1202,9 +1202,8 @@ const makeMessagesRecvSocket = config => {
 				}
 				break
 			case 'business':
-				// SMB privacy / data-sharing settings sync push
-				// (WhatsApp Web: WASmaxInBizSettingsSyncPrivacySettingRequest)
 				if (child?.tag === 'privacy') {
+					// SMB privacy / data-sharing settings sync push
 					ev.emit('business.privacy-settings-sync', {
 						jid: from,
 						categories: (0, WABinary_1.getBinaryNodeChildren)(child, 'category').map(c => ({
@@ -1213,6 +1212,26 @@ const makeMessagesRecvSocket = config => {
 						})),
 						attrs: child.attrs
 					})
+				} else if (child?.tag === 'profile') {
+					// Business profile updated for a contact (tag = profile version hash)
+					ev.emit('contacts.update', [
+						{
+							id: (0, WABinary_1.jidNormalizedUser)(child.attrs.jid || from),
+							businessProfileTag: child.attrs.tag
+						}
+					])
+				} else if (child?.tag === 'verified_name') {
+					// Verified business name changed — content is a proto payload
+					ev.emit('contacts.update', [
+						{
+							id: (0, WABinary_1.jidNormalizedUser)(child.attrs.jid || from),
+							verifiedName: {
+								verifiedLevel: child.attrs.verified_level,
+								serial: child.attrs.serial,
+								version: child.attrs.v
+							}
+						}
+					])
 				}
 				break
 			case 'hosted':

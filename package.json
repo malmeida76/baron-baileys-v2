@@ -31,6 +31,7 @@
     "lint": "tsc && eslint src --ext .js",
     "lint:fix": "npm run format && npm run lint -- --fix",
     "test": "jest --runInBand",
+    "bench": "node benchmarks/antiban.bench.js",
     "preinstall": "node ./engine-requirements.js"
   },
   "dependencies": {

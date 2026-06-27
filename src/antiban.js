@@ -89,18 +89,18 @@ var TIME_CONSTANTS = {
 	MS_PER_HOUR: 36e5,
 	MS_PER_DAY: 864e5,
 	BURST_RESET_MS: 3e4,
-	IDENTICAL_WINDOW_MS: 36e5
-	// 1 hour
+	IDENTICAL_WINDOW_MS: 18e5
+	// 30 minutes (was 1 hour — shorter window is less punishing for broadcast use cases)
 }
 var DEFAULT_CONFIG = {
-	maxPerMinute: 8,
-	maxPerHour: 200,
-	maxPerDay: 1500,
-	minDelayMs: 1500,
-	maxDelayMs: 5e3,
-	newChatDelayMs: 3e3,
-	maxIdenticalMessages: 3,
-	burstAllowance: 3,
+	maxPerMinute: 12,
+	maxPerHour: 400,
+	maxPerDay: 2500,
+	minDelayMs: 1200,
+	maxDelayMs: 4e3,
+	newChatDelayMs: 2e3,
+	maxIdenticalMessages: 10,
+	burstAllowance: 5,
 	identicalMessageWindowMs: TIME_CONSTANTS.IDENTICAL_WINDOW_MS
 }
 var RateLimiter = class {
@@ -167,7 +167,7 @@ var RateLimiter = class {
 		if (timeSinceLast < this.config.minDelayMs) {
 			delay = Math.max(delay, this.config.minDelayMs - timeSinceLast)
 		}
-		const typingDelay = Math.min(content.length * 30, 3e3)
+		const typingDelay = Math.min(content.length * 15, 2e3)
 		delay += this.jitter(typingDelay * 0.5, typingDelay)
 		return Math.round(delay)
 	}
@@ -255,10 +255,10 @@ var RateLimiter = class {
 
 // warmup.js
 var DEFAULT_CONFIG2 = {
-	warmUpDays: 7,
-	day1Limit: 20,
+	warmUpDays: 5,
+	day1Limit: 30,
 	growthFactor: 1.8,
-	inactivityThresholdHours: 72
+	inactivityThresholdHours: 168
 }
 var WarmUp = class {
 	config
@@ -2320,48 +2320,48 @@ function wrapWithSessionStability(sock, config = {}) {
 // presets.js
 var PRESETS = {
 	conservative: {
-		maxPerMinute: 5,
-		maxPerHour: 100,
-		maxPerDay: 800,
-		minDelayMs: 2500,
-		maxDelayMs: 7e3,
-		newChatDelayMs: 4e3,
-		warmupDays: 10,
-		day1Limit: 15,
+		maxPerMinute: 6,
+		maxPerHour: 150,
+		maxPerDay: 1000,
+		minDelayMs: 2000,
+		maxDelayMs: 6e3,
+		newChatDelayMs: 3e3,
+		warmupDays: 7,
+		day1Limit: 20,
 		growthFactor: 1.8,
-		inactivityThresholdHours: 72,
-		autoPauseAt: 'medium',
+		inactivityThresholdHours: 120,
+		autoPauseAt: 'high',
 		groupMultiplier: 0.5,
 		groupProfiles: false,
 		logging: true
 	},
 	moderate: {
-		maxPerMinute: 10,
-		maxPerHour: 300,
-		maxPerDay: 1500,
-		minDelayMs: 1500,
-		maxDelayMs: 5e3,
-		newChatDelayMs: 3e3,
-		warmupDays: 7,
-		day1Limit: 20,
+		maxPerMinute: 15,
+		maxPerHour: 500,
+		maxPerDay: 3e3,
+		minDelayMs: 1e3,
+		maxDelayMs: 4e3,
+		newChatDelayMs: 2e3,
+		warmupDays: 5,
+		day1Limit: 30,
 		growthFactor: 1.8,
-		inactivityThresholdHours: 72,
-		autoPauseAt: 'high',
+		inactivityThresholdHours: 168,
+		autoPauseAt: 'critical',
 		groupMultiplier: 0.7,
 		groupProfiles: false,
 		logging: true
 	},
 	aggressive: {
-		maxPerMinute: 20,
-		maxPerHour: 800,
-		maxPerDay: 4e3,
-		minDelayMs: 800,
-		maxDelayMs: 3e3,
-		newChatDelayMs: 2e3,
-		warmupDays: 4,
-		day1Limit: 35,
+		maxPerMinute: 25,
+		maxPerHour: 1200,
+		maxPerDay: 6e3,
+		minDelayMs: 600,
+		maxDelayMs: 2500,
+		newChatDelayMs: 1500,
+		warmupDays: 3,
+		day1Limit: 50,
 		growthFactor: 2,
-		inactivityThresholdHours: 48,
+		inactivityThresholdHours: 96,
 		autoPauseAt: 'critical',
 		groupMultiplier: 0.9,
 		groupProfiles: false,
@@ -2370,7 +2370,7 @@ var PRESETS = {
 }
 function resolveConfig(input) {
 	if (input === void 0) {
-		return { ...PRESETS.conservative }
+		return { ...PRESETS.moderate }
 	}
 	if (typeof input === 'string') {
 		if (!(input in PRESETS)) {
@@ -2378,7 +2378,7 @@ function resolveConfig(input) {
 		}
 		return { ...PRESETS[input] }
 	}
-	const { preset = 'conservative', ...overrides } = input
+	const { preset = 'moderate', ...overrides } = input
 	if (!(preset in PRESETS)) {
 		throw new Error(`Unknown preset "${preset}". Valid: ${Object.keys(PRESETS).join(', ')}`)
 	}
@@ -2495,7 +2495,9 @@ function isLegacyConfig(cfg) {
 	)
 }
 function mapLegacyToFlat(legacy) {
-	process.stderr.write('[baileys-antiban] DEPRECATED: Nested config (v2 style) detected. Migrate to flat config: new AntiBan({ maxPerMinute: 8 }).\n')
+	process.stderr.write(
+		'[baileys-antiban] DEPRECATED: Nested config (v2 style) detected. Migrate to flat config: new AntiBan({ maxPerMinute: 8 }).\n'
+	)
 	const flat = {}
 	if (legacy.rateLimiter?.maxPerMinute !== void 0) flat.maxPerMinute = legacy.rateLimiter.maxPerMinute
 	if (legacy.rateLimiter?.maxPerHour !== void 0) flat.maxPerHour = legacy.rateLimiter.maxPerHour
@@ -2552,7 +2554,9 @@ var AntiBan = class {
 			}
 		}
 		this.logging = cfg.logging ?? true
-		this._log = (msg) => { if (this.logging) process.stdout.write(`[baileys-antiban] ${msg}\n`) }
+		this._log = msg => {
+			if (this.logging) process.stdout.write(`[baileys-antiban] ${msg}\n`)
+		}
 		this.rateLimiter = new RateLimiter({
 			maxPerMinute: cfg.maxPerMinute,
 			maxPerHour: cfg.maxPerHour,
@@ -2590,7 +2594,9 @@ var AntiBan = class {
 			...(legacyPassthrough?.timelock || {}),
 			onTimelockDetected: state => {
 				this.health.recordReachoutTimelock(state.enforcementType)
-				this._log(`REACHOUT TIMELOCKED \u2014 ${state.enforcementType || 'unknown'}, expires ${state.expiresAt?.toISOString() || 'unknown'}`)
+				this._log(
+					`REACHOUT TIMELOCKED \u2014 ${state.enforcementType || 'unknown'}, expires ${state.expiresAt?.toISOString() || 'unknown'}`
+				)
 				legacyPassthrough?.timelock?.onTimelockDetected?.(state)
 			},
 			onTimelockLifted: state => {
@@ -2633,7 +2639,9 @@ var AntiBan = class {
 				badMacThreshold: legacyPassthrough.sessionStability.badMacThreshold,
 				badMacWindowMs: legacyPassthrough.sessionStability.badMacWindowMs,
 				onDegraded: stats => {
-					this._log(`\u{1F534} SESSION DEGRADED \u2014 Bad MAC rate: ${stats.badMacCount} in last ${legacyPassthrough?.sessionStability?.badMacWindowMs || 6e4}ms`)
+					this._log(
+						`\u{1F534} SESSION DEGRADED \u2014 Bad MAC rate: ${stats.badMacCount} in last ${legacyPassthrough?.sessionStability?.badMacWindowMs || 6e4}ms`
+					)
 					this._log('Consider restarting session or switching to LID-based canonical form')
 				},
 				onRecovered: () => {
@@ -2673,7 +2681,9 @@ var AntiBan = class {
 		if (!this.warmUp.canSend()) {
 			this.stats.messagesBlocked++
 			const warmUpStatus = this.warmUp.getStatus()
-			this._log(`\u23F3 BLOCKED \u2014 warm-up day ${warmUpStatus.day}/${warmUpStatus.totalDays}, limit reached (${warmUpStatus.todaySent}/${warmUpStatus.todayLimit})`)
+			this._log(
+				`\u23F3 BLOCKED \u2014 warm-up day ${warmUpStatus.day}/${warmUpStatus.totalDays}, limit reached (${warmUpStatus.todaySent}/${warmUpStatus.todayLimit})`
+			)
 			return {
 				allowed: false,
 				delayMs: 0,
@@ -4087,27 +4097,31 @@ function messageRecovery(sock, config) {
 
 // deviceFingerprint.js
 var DEFAULT_APP_VERSION_POOL = [
-	[2, 24, 5, 18],
-	[2, 24, 5, 17],
-	[2, 24, 4, 77],
-	[2, 24, 5, 15],
-	[2, 24, 3, 91],
-	[2, 24, 5, 20]
+	[2, 25, 10, 67],
+	[2, 25, 10, 68],
+	[2, 25, 9, 96],
+	[2, 25, 8, 77],
+	[2, 25, 7, 85],
+	[2, 25, 6, 98],
+	[2, 24, 22, 78],
+	[2, 24, 20, 86]
 ]
-var DEFAULT_OS_VERSION_POOL = ['10', '11', '12', '13', '14']
+var DEFAULT_OS_VERSION_POOL = ['11', '12', '13', '14', '15']
 var DEFAULT_DEVICE_MODEL_POOL = [
-	'Pixel 6',
+	'Pixel 8',
+	'Pixel 9',
 	'Pixel 7',
-	'Galaxy S22',
+	'Galaxy S24',
 	'Galaxy S23',
+	'Galaxy S22',
+	'Xiaomi 14',
 	'Xiaomi 13',
-	'Xiaomi 12',
+	'OnePlus 12',
 	'OnePlus 11',
 	'Moto G84',
-	'Moto G54',
-	'Realme 11',
-	'Vivo V29',
-	'Oppo Find X6'
+	'Realme 12',
+	'Vivo V30',
+	'Oppo Find X7'
 ]
 var SeededRandom = class {
 	state

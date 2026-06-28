@@ -830,6 +830,15 @@ const makeSocket = config => {
 			new boom_1.Boom('Multi-device beta not joined', { statusCode: Types_1.DisconnectReason.multideviceMismatch })
 		)
 	})
+	ws.on('CB:ib,,dirty', node => {
+		const dirtyNode = (0, WABinary_1.getBinaryNodeChild)(node, 'dirty')
+		const dirtyType = dirtyNode?.attrs?.type
+		const dirtyTs = dirtyNode?.attrs?.timestamp ? +dirtyNode.attrs.timestamp : undefined
+		// dirty signals that server-side account data changed; a notification with the same
+		// type will follow immediately — no response stanza required
+		logger.debug({ dirtyType, dirtyTs }, 'received dirty flag')
+		ev.emit('account.dirty', { type: dirtyType, timestamp: dirtyTs })
+	})
 	ws.on('CB:ib,,offline_preview', async node => {
 		logger.info('offline preview received', JSON.stringify(node))
 		await sendNode({

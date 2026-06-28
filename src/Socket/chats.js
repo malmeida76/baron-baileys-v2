@@ -389,6 +389,52 @@ const makeChatsSocket = config => {
 		return (0, WABinary_1.getBinaryNodeChildren)(result, 'notice').map(n => ({ ...n.attrs }))
 	}
 	/**
+	 * Accept a TOS/disclosure notice (`xmlns="tos"` set with `<trackable>`).
+	 * Mirrors WASmaxUserNoticeTrackDisclosureRPC from WA Web.
+	 * @param {string} noticeId the notice id (e.g. "20250211")
+	 * @param {string|number} result the result code (e.g. "105")
+	 */
+	const acceptTosNotice = async (noticeId, result = '105') => {
+		await query({
+			tag: 'iq',
+			attrs: { to: WABinary_1.S_WHATSAPP_NET, xmlns: 'tos', type: 'set' },
+			content: [{ tag: 'trackable', attrs: { id: String(noticeId), result: String(result) } }]
+		})
+	}
+	/**
+	 * Report spam for a chat/group with sample messages.
+	 * Mirrors WASmaxReportSpamRPC (xmlns="spam", type="set").
+	 * @param {string} jid the JID of the chat or group being reported
+	 * @param {Array<{id:string, from:string, t:number}>} messages up to ~5 recent messages as evidence
+	 * @param {string} [spamFlow] e.g. "group_info_report" or "contact_info_report"
+	 * @param {string} [subject] human-readable subject string (group name or contact name)
+	 */
+	const reportSpam = async (jid, messages, spamFlow = 'contact_info_report', subject) => {
+		const msgNodes = (messages || []).map(m => ({
+			tag: 'message',
+			attrs: {
+				from: String(jid),
+				t: String(m.t),
+				id: String(m.id)
+			}
+		}))
+		await query({
+			tag: 'iq',
+			attrs: { to: WABinary_1.S_WHATSAPP_NET, xmlns: 'spam', type: 'set' },
+			content: [
+				{
+					tag: 'spam_list',
+					attrs: {
+						jid: String(jid),
+						spam_flow: String(spamFlow),
+						...(subject ? { subject: String(subject) } : {})
+					},
+					content: msgNodes
+				}
+			]
+		})
+	}
+	/**
 	 * Get the account opt-out list (`optoutlist` IQ). Returns the raw result node.
 	 */
 	const getOptOutList = async () => {
@@ -1763,6 +1809,8 @@ const makeChatsSocket = config => {
 		getChatBlockingStatus,
 		updateChatBlockingStatus,
 		getUserDisclosures,
+		acceptTosNotice,
+		reportSpam,
 		getOptOutList,
 		getPushConfig,
 		setPushConfig,

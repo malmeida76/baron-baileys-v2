@@ -1129,26 +1129,33 @@ const makeMessagesRecvSocket = config => {
 			case 'encrypt':
 				await handleEncryptNotification(node)
 				break
-			case 'devices':
-				const devices = (0, WABinary_1.getBinaryNodeChildren)(child, 'device')
-				const deviceOwnerJid = child.attrs.jid || child.attrs.lid
+			case 'devices': {
+				// child = <add> or <remove> — neither carries jid/lid, owner is node.attrs.from
+				const addNode = (0, WABinary_1.getBinaryNodeChild)(node, 'add')
+				const removeNode = (0, WABinary_1.getBinaryNodeChild)(node, 'remove')
+				const changedNode = addNode || removeNode
+				const isAdded = !!addNode
+				const devices = (0, WABinary_1.getBinaryNodeChildren)(changedNode, 'device')
+				const deviceOwnerJid = from
 				const deviceData = devices.map(d => ({
 					id: d.attrs.jid,
 					lid: d.attrs.lid,
-					keyIndex: d.attrs.key_index ? +d.attrs.key_index : undefined,
+					// wire attr is "key-index" (hyphen), not "key_index"
+					keyIndex: d.attrs['key-index'] ? +d.attrs['key-index'] : undefined,
 					platform: d.attrs.platform || undefined,
 					isCompanion: d.attrs.companion === 'true' || undefined
 				}))
-				if (
-					(0, WABinary_1.areJidsSameUser)(child.attrs.jid, authState.creds.me.id) ||
-					(0, WABinary_1.areJidsSameUser)(child.attrs.lid, authState.creds.me.lid)
-				) {
-					logger.info({ deviceData }, 'my own devices changed')
-					ev.emit('devices.update', { id: deviceOwnerJid, devices: deviceData, isSelf: true })
-				} else if (deviceOwnerJid) {
-					ev.emit('devices.update', { id: deviceOwnerJid, devices: deviceData, isSelf: false })
+				const isSelf =
+					(0, WABinary_1.areJidsSameUser)(from, authState.creds.me?.id) ||
+					(0, WABinary_1.areJidsSameUser)(from, authState.creds.me?.lid)
+				if (isSelf) {
+					logger.info({ deviceData, isAdded }, 'my own devices changed')
+				}
+				if (deviceOwnerJid) {
+					ev.emit('devices.update', { id: deviceOwnerJid, devices: deviceData, isSelf, added: isAdded })
 				}
 				break
+			}
 			case 'server_sync':
 				const update = (0, WABinary_1.getBinaryNodeChild)(node, 'collection')
 				if (update) {

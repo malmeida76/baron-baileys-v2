@@ -105,19 +105,19 @@ See [MEX.md](documentation/MEX.md) for full documentation.
 
 **Extra Features**
 
-| Feature                   | Notes                                                                                                                                                                                               |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Meta AI / msmsg decrypt   | Full `messageSecret`-encrypted AI message decryption                                                                                                                                                |
-| Meta AI message handling  | Receive and process Meta AI bot responses                                                                                                                                                           |
-| Rich AI composer          | Send tables, lists, code blocks, LaTeX via Meta AI format                                                                                                                                           |
-| Interactive buttons       | List, reply, template, cards, product list, PIX/PAY                                                                                                                                                 |
-| Interop (FB/IG)           | Near-parity with mobile & web for cross-platform JIDs                                                                                                                                               |
-| Anti-ban measures         | Connection fingerprinting aligned with official clients                                                                                                                                             |
-| Album messages            | Send multiple media as an album                                                                                                                                                                     |
-| Sticker packs             | Sticker pack message support                                                                                                                                                                        |
-| Newsletter messages       | Follower invite messages                                                                                                                                                                            |
-| WA-Web protocol port      | Chat-block toggle, call-link waiting room, community sub-group ops, group sharing settings, business eligibility, opt-out/push, coexistence events — [WA-WEB-PORT.md](documentation/WA-WEB-PORT.md) |
-| Top-level call signalling | Emits `call` for both `<call>`-wrapped and top-level `<offer>`/`<terminate>` stanzas (+ acks them)                                                                                                  |
+| Feature                   | Notes                                                                                                                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Meta AI / msmsg decrypt   | Full `messageSecret`-encrypted AI message decryption                                                                                                                                                                                       |
+| Meta AI message handling  | Receive and process Meta AI bot responses                                                                                                                                                                                                  |
+| Rich AI composer          | Send tables, lists, code blocks, LaTeX via Meta AI format                                                                                                                                                                                  |
+| Interactive buttons       | List, reply, template, cards, product list, PIX/PAY                                                                                                                                                                                        |
+| Interop (FB/IG)           | Near-parity with mobile & web for cross-platform JIDs                                                                                                                                                                                      |
+| Anti-ban measures         | Connection fingerprinting aligned with official clients                                                                                                                                                                                    |
+| Album messages            | Send multiple media as an album                                                                                                                                                                                                            |
+| Sticker packs             | Sticker pack message support                                                                                                                                                                                                               |
+| Newsletter messages       | Follower invite messages                                                                                                                                                                                                                   |
+| WA-Web protocol port      | Chat-block toggle, call-link waiting room, community sub-group ops, group sharing settings, spam reporting, TOS acceptance, mex group/newsletter events, account dirty/device-sync events — [WA-WEB-PORT.md](documentation/WA-WEB-PORT.md) |
+| Top-level call signalling | Emits `call` for both `<call>`-wrapped and top-level `<offer>`/`<terminate>` stanzas (+ acks them)                                                                                                                                         |
 
 ---
 

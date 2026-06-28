@@ -38,6 +38,8 @@ await sock.updateChatBlockingStatus('block') // or 'unblock'
 
 // Pending TOS disclosures / notices (xmlns tos)
 const notices = await sock.getUserDisclosures() // [{ t, version, type, ... }]
+await sock.acceptTosNotice(noticeId) // result defaults to '105' (accept)
+await sock.acceptTosNotice(noticeId, '155') // explicit result code
 
 // Feature opt-out list
 const optOut = await sock.getOptOutList()
@@ -45,6 +47,10 @@ const optOut = await sock.getOptOutList()
 // Push-notification settings (mainly web push)
 const push = await sock.getPushConfig()
 await sock.setPushConfig({ platform: 'web', endpoint, auth, p256dh })
+
+// Spam reporting (xmlns spam)
+await sock.reportSpam(jid, messages, spamFlow, subject)
+// messages: [{ t, id }]  spamFlow defaults to 'contact_info_report'
 ```
 
 ---
@@ -117,14 +123,108 @@ sock.ev.on('call', calls => {
 
 ---
 
-## New events
+## Mex notifications
 
-| Event                            | When                                                                                       | Payload                                                                  |
-| -------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| `business.privacy-settings-sync` | server pushes an SMB privacy/data-sharing sync (`<notification type="business"><privacy>`) | `{ jid, categories, attrs }`                                             |
-| `coexistence.update`             | WA ⇄ Messenger/Instagram onboarding/offboarding push (`<notification type="hosted">`)      | `{ jid, kind: 'onboarding' \| 'offboarding', status?, productSurface? }` |
+`notification type="mex"` carries **XWA2 property updates** for groups and newsletters.
+Each stanza has one or more `<update op_name="...">` children whose content is JSON.
+
+### Newsletter events (from mex)
+
+| Op name                                   | Event emitted                    | Key payload fields                                 |
+| ----------------------------------------- | -------------------------------- | -------------------------------------------------- |
+| `NotificationNewsletterJoin`              | `newsletter-participants.update` | `{ id, action:'join', new_role, metadata }`        |
+| `NotificationNewsletterMuteChange`        | `newsletter-settings.update`     | `{ id, update: { mute: 'ON'\|'OFF' } }`            |
+| `NotificationNewsletterUserSettingChange` | `newsletter-settings.update`     | `{ id, update: { userSetting: { type, value } } }` |
+| `NotificationNewsletterUpdate`            | `newsletter-settings.update`     | `{ id, update: thread_metadata.settings }`         |
+
+### Group property events (from mex)
+
+These are pushed when an admin changes a group property via the community settings UI.
+
+| Op name                                       | Event emitted   | Payload field changed |
+| --------------------------------------------- | --------------- | --------------------- |
+| `NotificationGroupMemberLinkPropertyUpdate`   | `groups.update` | `memberAddMode`       |
+| `NotificationGroupLimitSharingPropertyUpdate` | `groups.update` | `limitSharing`        |
 
 ```js
+sock.ev.on('groups.update', updates => {
+	for (const u of updates) {
+		if (u.memberAddMode) console.log(u.id, 'link mode ->', u.memberAddMode)
+		if (u.limitSharing !== undefined) console.log(u.id, 'limit sharing ->', u.limitSharing)
+	}
+})
+```
+
+---
+
+## Newsletter live updates
+
+`notification type="newsletter"` with a `<live_updates>` child carries per-message
+engagement data (reactions and forwards), not a single view count. The `newsletter.live-update`
+event now reflects the actual wire format:
+
+```js
+sock.ev.on('newsletter.live-update', u => {
+	// u.id         - newsletter JID
+	// u.server_id  - message server_id
+	// u.timestamp  - update timestamp (seconds)
+	// u.forwardsCount - number of forwards (may be undefined)
+	// u.reactions  - [{ code: '❤️', count: 46 }, ...]
+	console.log(u.server_id, u.reactions)
+})
+```
+
+---
+
+## Account events
+
+### Dirty flag (`account.dirty`)
+
+Server signals that account data changed and a full resync may be needed.
+A `notification` stanza with the same type follows shortly after.
+
+```js
+sock.ev.on('account.dirty', ({ type, timestamp }) => {
+	// type: 'account_sync' | 'regular_high' | ...
+	console.log('dirty:', type, timestamp)
+})
+```
+
+### Device list sync (`account.devices-synced`)
+
+Sent when a linked device is added, removed, or its key index changes.
+Contains the **complete** device list (not just the delta) plus a signed
+key-index-list blob.
+
+```js
+sock.ev.on('account.devices-synced', ev => {
+	// ev.dhash            - device list hash ("2:xxxxxxxx")
+	// ev.devices          - [{ jid, keyIndex? }]
+	// ev.keyIndexList     - Buffer (ADVSignedKeyIndexList protobuf)
+	// ev.keyIndexListTimestamp - unix seconds
+	console.log('devices now:', ev.devices.length, ev.dhash)
+})
+```
+
+---
+
+## New events (summary)
+
+| Event                            | When                                                                                    | Payload                                                                              |
+| -------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `business.privacy-settings-sync` | server pushes SMB privacy/data-sharing sync (`<notification type="business"><privacy>`) | `{ jid, categories, attrs }`                                                         |
+| `coexistence.update`             | WA ⇄ Messenger/Instagram onboarding/offboarding push (`<notification type="hosted">`)   | `{ jid, kind: 'onboarding' \| 'offboarding', status?, productSurface? }`             |
+| `account.dirty`                  | server flags that account data changed (`<ib><dirty>`)                                  | `{ type, timestamp? }`                                                               |
+| `account.devices-synced`         | linked device added/removed or key index changed (`<notification type="account_sync">`) | `{ dhash, devices, keyIndexList?, keyIndexListTimestamp? }`                          |
+| `newsletter-participants.update` | subscribed to a newsletter (mex `NotificationNewsletterJoin`)                           | `{ id, action:'join', new_role, metadata }`                                          |
+| `newsletter-settings.update`     | newsletter muted/unmuted or user setting changed (mex)                                  | `{ id, update: { mute? } \| { userSetting? } \| settings }`                          |
+| `newsletter.live-update`         | newsletter message engagement pushed (`<notification type="newsletter"><live_updates>`) | `{ id, server_id, timestamp?, forwardsCount?, reactions: [{code, count}] }`          |
+| `groups.update`                  | group member-link or limit-sharing setting changed via mex                              | `[{ id, memberAddMode? }]` or `[{ id, limitSharing? }]`                              |
+| `devices.update`                 | another account's linked device added or removed (`<notification type="devices">`)      | `{ id, devices: [{jid?, lid?, keyIndex?, platform?, isCompanion?}], isSelf, added }` |
+
+```js
+sock.ev.on('account.dirty', ({ type }) => console.log('dirty:', type))
+sock.ev.on('account.devices-synced', ev => console.log('devices:', ev.devices.length))
 sock.ev.on('coexistence.update', u => console.log(u.kind, u.status))
 sock.ev.on('business.privacy-settings-sync', s => console.log(s.categories))
 ```

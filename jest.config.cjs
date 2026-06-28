@@ -3,7 +3,7 @@ module.exports = {
 	roots: ['<rootDir>/test'],
 	testMatch: ['**/*.test.js'],
 	moduleNameMapper: {
-		'^whatsapp-rust-bridge$': '<rootDir>/test/__mocks__/whatsapp-rust-bridge.js',
+		'^whatsapp-rust-bridge-baron$': '<rootDir>/test/__mocks__/whatsapp-rust-bridge-baron.js',
 		'^p-queue$': '<rootDir>/test/__mocks__/p-queue.js'
 	},
 	testTimeout: 15000,

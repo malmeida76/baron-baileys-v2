@@ -31,6 +31,12 @@ const sha256 = buf => crypto.createHash('sha256').update(buf).digest()
 const hmacSign = (buf, key) => crypto.createHmac('sha256', Buffer.from(key)).update(buf).digest()
 const md5 = buf => crypto.createHash('md5').update(buf).digest()
 
+class LTHashAntiTampering {
+	add() {}
+	subtract() {}
+	getResult() { return Buffer.alloc(128) }
+}
+
 module.exports = {
 	hkdf,
 	aesDecryptGCM,
@@ -38,4 +44,5 @@ module.exports = {
 	sha256,
 	hmacSign,
 	md5,
+	LTHashAntiTampering,
 }

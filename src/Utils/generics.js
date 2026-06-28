@@ -266,7 +266,7 @@ const fetchLatestBaileysVersion = async (options = {}) => {
 		const versionLine = lines[6] // Line 7 (0-indexed)
 		const versionMatch = versionLine.match(/const version = \[(\d+),\s*(\d+),\s*(\d+)\]/)
 		if (versionMatch) {
-			const version = [parseInt(versionMatch[1]), parseInt(versionMatch[2]), parseInt(versionMatch[3])]
+			const version = [parseInt(versionMatch[1], 10), parseInt(versionMatch[2], 10), parseInt(versionMatch[3], 10)]
 			return {
 				version,
 				isLatest: true

@@ -17,11 +17,10 @@ Query which features a device supports (`document`, `encrypt*`, `voip`,
 `multi_agent`, …) via the standard USync mechanism.
 
 ```js
-const { USyncQuery, USyncUser } = require('baileys-mobile/src/WAUSync')
-const { USyncFeatureProtocol } = require('baileys-mobile/src/WAUSync/Protocols/USyncFeatureProtocol')
+const { USyncQuery, USyncUser } = require('baron-baileys-v2/src/WAUSync')
+const { USyncFeatureProtocol } = require('baron-baileys-v2/src/WAUSync/Protocols/USyncFeatureProtocol')
 
-const query = new USyncQuery()
-	.withUser(new USyncUser().withId('49123456789@s.whatsapp.net'))
+const query = new USyncQuery().withUser(new USyncUser().withId('49123456789@s.whatsapp.net'))
 query.protocols.push(new USyncFeatureProtocol(['encrypt', 'voip'])) // or default = all features
 
 const result = await sock.executeUSyncQuery(query)
@@ -34,11 +33,11 @@ const result = await sock.executeUSyncQuery(query)
 
 ```js
 // Global "block messages from unknown accounts" toggle (xmlns w:comms:chat)
-const status = await sock.getChatBlockingStatus()        // 'blocked' | 'unblocked'
-await sock.updateChatBlockingStatus('block')             // or 'unblock'
+const status = await sock.getChatBlockingStatus() // 'blocked' | 'unblocked'
+await sock.updateChatBlockingStatus('block') // or 'unblock'
 
 // Pending TOS disclosures / notices (xmlns tos)
-const notices = await sock.getUserDisclosures()          // [{ t, version, type, ... }]
+const notices = await sock.getUserDisclosures() // [{ t, version, type, ... }]
 
 // Feature opt-out list
 const optOut = await sock.getOptOutList()
@@ -54,7 +53,7 @@ await sock.setPushConfig({ platform: 'web', endpoint, auth, p256dh })
 
 ```js
 // Linked Facebook/Instagram accounts (WhatsApp-as-a-page)
-const linked = await sock.getLinkedAccounts()            // { pageInfo, linkState, node }
+const linked = await sock.getLinkedAccounts() // { pageInfo, linkState, node }
 
 // Marketing-message / meta-verified / genai eligibility
 const elig = await sock.getBusinessEligibility({ metaVerified: 1, marketingMessages: 1 })
@@ -66,7 +65,7 @@ const elig = await sock.getBusinessEligibility({ metaVerified: 1, marketingMessa
 ## Groups & communities
 
 ```js
-await sock.groupAcknowledge(groupJid)                                   // <ack/>
+await sock.groupAcknowledge(groupJid) // <ack/>
 
 // participants of a community's linked/sub groups
 const linkedParts = await sock.groupGetLinkedParticipants(communityJid) // [{ jid, phoneNumber? }]
@@ -86,11 +85,11 @@ await sock.groupSubGroupSuggestionsAction(communityJid, 'approve', [{ creator, j
 
 `groupMetadata(jid)` now also returns the WA Web group-sharing settings:
 
-| Field | Source tag | Values |
-|---|---|---|
+| Field                    | Source tag                          | Values                              |
+| ------------------------ | ----------------------------------- | ----------------------------------- |
 | `memberShareHistoryMode` | `<member_share_group_history_mode>` | `all_member_share` \| `admin_share` |
-| `memberLinkMode` | `<member_link_mode>` | `admin_link` \| `all_member_link` |
-| `limitSharing` | `<limit_sharing_enabled>` | `boolean` (presence flag) |
+| `memberLinkMode`         | `<member_link_mode>`                | `admin_link` \| `all_member_link`   |
+| `limitSharing`           | `<limit_sharing_enabled>`           | `boolean` (presence flag)           |
 
 ---
 
@@ -120,10 +119,10 @@ sock.ev.on('call', calls => {
 
 ## New events
 
-| Event | When | Payload |
-|---|---|---|
-| `business.privacy-settings-sync` | server pushes an SMB privacy/data-sharing sync (`<notification type="business"><privacy>`) | `{ jid, categories, attrs }` |
-| `coexistence.update` | WA ⇄ Messenger/Instagram onboarding/offboarding push (`<notification type="hosted">`) | `{ jid, kind: 'onboarding' \| 'offboarding', status?, productSurface? }` |
+| Event                            | When                                                                                       | Payload                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `business.privacy-settings-sync` | server pushes an SMB privacy/data-sharing sync (`<notification type="business"><privacy>`) | `{ jid, categories, attrs }`                                             |
+| `coexistence.update`             | WA ⇄ Messenger/Instagram onboarding/offboarding push (`<notification type="hosted">`)      | `{ jid, kind: 'onboarding' \| 'offboarding', status?, productSurface? }` |
 
 ```js
 sock.ev.on('coexistence.update', u => console.log(u.kind, u.status))

@@ -297,7 +297,7 @@ const jidDecode = jid => {
 	} else if (server === 'hosted.lid') {
 		domainType = WAJIDDomains.HOSTED_LID
 	} else if (agent) {
-		domainType = parseInt(agent)
+		domainType = parseInt(agent, 10)
 	}
 	return {
 		server: server,

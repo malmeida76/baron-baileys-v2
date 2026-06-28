@@ -6,19 +6,19 @@ This document catalogues all WhatsApp IQ/stanza namespaces and protocols found i
 
 ## Namespace Overview
 
-| Namespace (`xmlns`) | Used For | Notes |
-|---------------------|----------|-------|
-| `w:g2` | Groups v2, Communities, AI Groups | See [COMMUNITIES.md](COMMUNITIES.md) |
-| `w:mex` | MEX social features (GraphQL-over-WS) | See [MEX.md](MEX.md) |
-| `usync` | Bulk user data queries | See [USYNC.md](USYNC.md) |
-| `w:interop` | DMA interoperability (BirdyChat, Haiket) | See [INTEROP.md](INTEROP.md) |
-| `status` | Status privacy (who can see your status) | See below |
-| `w:pay` | Payments UPI/India IQ | See below |
-| `w:stats` | WAM statistics reporting | See below |
-| `encrypt` | Signal pre-key fetch and key exchange | See below |
-| `privatestats` | Privacy-preserving credential exchange | See [BAN-SYSTEM.md](BAN-SYSTEM.md) |
-| `tos` | Terms of Service / CTWA consent disclosure | See below |
-| `fb:thrift_iq` | Legacy bug reporting | See below |
+| Namespace (`xmlns`) | Used For                                   | Notes                                |
+| ------------------- | ------------------------------------------ | ------------------------------------ |
+| `w:g2`              | Groups v2, Communities, AI Groups          | See [COMMUNITIES.md](COMMUNITIES.md) |
+| `w:mex`             | MEX social features (GraphQL-over-WS)      | See [MEX.md](MEX.md)                 |
+| `usync`             | Bulk user data queries                     | See [USYNC.md](USYNC.md)             |
+| `w:interop`         | DMA interoperability (BirdyChat, Haiket)   | See [INTEROP.md](INTEROP.md)         |
+| `status`            | Status privacy (who can see your status)   | See below                            |
+| `w:pay`             | Payments UPI/India IQ                      | See below                            |
+| `w:stats`           | WAM statistics reporting                   | See below                            |
+| `encrypt`           | Signal pre-key fetch and key exchange      | See below                            |
+| `privatestats`      | Privacy-preserving credential exchange     | See [BAN-SYSTEM.md](BAN-SYSTEM.md)   |
+| `tos`               | Terms of Service / CTWA consent disclosure | See below                            |
+| `fb:thrift_iq`      | Legacy bug reporting                       | See below                            |
 
 ---
 
@@ -54,14 +54,15 @@ This document catalogues all WhatsApp IQ/stanza namespaces and protocols found i
 
 **`statusDistribution` values (internal enum):**
 
-| Value | `type` attr |
-|-------|-------------|
-| 0 | `contacts` |
-| 1 | `whitelist` |
-| 2 | `blacklist` |
-| 4 | `null` (all) |
+| Value | `type` attr  |
+| ----- | ------------ |
+| 0     | `contacts`   |
+| 1     | `whitelist`  |
+| 2     | `blacklist`  |
+| 4     | `null` (all) |
 
 **Custom list fields:**
+
 - `id` — list UUID
 - `listname` — human-readable name
 - `emoji` — list emoji (e.g. `⭐`)
@@ -79,18 +80,18 @@ WhatsApp calls use a custom `<call>` message stanza (not IQ). The stanzas are bu
 
 ### Call stanza tags
 
-| Tag | Direction | Description |
-|-----|-----------|-------------|
-| `offer` | outgoing | Initiate a call |
-| `accept` | outgoing | Accept an incoming call |
-| `reject` | outgoing | Decline an incoming call |
-| `terminate` | both | End a call |
-| `video` | both | Video call metadata |
-| `enc_rekey` | both | Re-encrypt call key (for reconnects) |
-| `lobby` | both | Call lobby (group calls) |
-| `link_join` | outgoing | Join via call link |
-| `link_query` | outgoing | Query call link info |
-| `link_create` | outgoing | Create a call link |
+| Tag           | Direction | Description                          |
+| ------------- | --------- | ------------------------------------ |
+| `offer`       | outgoing  | Initiate a call                      |
+| `accept`      | outgoing  | Accept an incoming call              |
+| `reject`      | outgoing  | Decline an incoming call             |
+| `terminate`   | both      | End a call                           |
+| `video`       | both      | Video call metadata                  |
+| `enc_rekey`   | both      | Re-encrypt call key (for reconnects) |
+| `lobby`       | both      | Call lobby (group calls)             |
+| `link_join`   | outgoing  | Join via call link                   |
+| `link_query`  | outgoing  | Query call link info                 |
+| `link_create` | outgoing  | Create a call link                   |
 
 ### Stanza structure (offer)
 
@@ -112,12 +113,12 @@ WhatsApp calls use a custom `<call>` message stanza (not IQ). The stanzas are bu
 
 ### Encryption node fields
 
-| Field | Value | Meaning |
-|-------|-------|---------|
-| `v` | `"2"` | Signal protocol version |
-| `type` | `"pkmsg"` | PreKey message (first message) |
-| `type` | `"msg"` | Normal message (subsequent) |
-| data | binary | Encrypted call session key (protobuf `CallMessage`) |
+| Field  | Value     | Meaning                                             |
+| ------ | --------- | --------------------------------------------------- |
+| `v`    | `"2"`     | Signal protocol version                             |
+| `type` | `"pkmsg"` | PreKey message (first message)                      |
+| `type` | `"msg"`   | Normal message (subsequent)                         |
+| data   | binary    | Encrypted call session key (protobuf `CallMessage`) |
 
 ### `terminate` retry behavior
 
@@ -132,6 +133,7 @@ Used when a device reconnects mid-call. Sends a new encrypted E2E key to the spe
 ### Bot calls (AI Group calls)
 
 If `callInfo.isBotCall == true`, the offer payload includes extra fields:
+
 - `adType` — external ad reply type
 - `callEntryPoint` — feature flag 24935
 - `nativeFlowCallButtonPayload` — native flow payload
@@ -158,9 +160,11 @@ Indian UPI payments use IQ stanzas with `xmlns="w:pay"`:
 ```
 
 **`provider-type` values:**
+
 - `CREDIT`, `CREDIT_LINE`, `CURRENT`, `DEFAULT`
 
 **`account-type` values:**
+
 - `CREDIT`, `CREDIT_LINE`, `CURRENT`, `DEFAULT`
 
 > Most payment operations (PIX Brazil, mandate management, payment keys) go through HTTPS GraphQL — see [GRAPHQL.md](GRAPHQL.md).
@@ -244,10 +248,12 @@ Used for CTWA (Click-To-WhatsApp Ad) consumer consent disclosure:
 ```
 
 Also used for interop TOS acceptance during init:
+
 ```
 → SET xmlns="tos" <trackable id="20240306" result="105"/>   (TOS shown)
 → SET xmlns="tos" <trackable id="20240306" result="160"/>   (TOS accepted)
 ```
+
 See [INTEROP.md](INTEROP.md) for the interop TOS flow.
 
 ---
@@ -263,9 +269,11 @@ Legacy bug report submission (tag 105):
 ```
 
 Modern path uses MEX mutation `RequestPeerLogsUploadForBugMutation`:
+
 ```js
 await sock.requestPeerLogsUpload('bug-id')
 ```
+
 See [REGISTRATION.md](REGISTRATION.md).
 
 ---
@@ -276,22 +284,22 @@ SyncD synchronizes app state (chats, contacts, settings) between multi-device in
 
 ### Peer message types (sent as Signal-encrypted messages between devices)
 
-| Type string | Meaning |
-|-------------|---------|
-| `syncd-key-share` | Share syncd encryption key with new device |
-| `syncd-key-request` | Request syncd key from primary device |
-| `syncd-fatal-exception-notification` | Notify primary of fatal syncd error |
-| `companion_syncd_snapshot_fatal_recovery` | Recovery from snapshot corruption |
+| Type string                               | Meaning                                    |
+| ----------------------------------------- | ------------------------------------------ |
+| `syncd-key-share`                         | Share syncd encryption key with new device |
+| `syncd-key-request`                       | Request syncd key from primary device      |
+| `syncd-fatal-exception-notification`      | Notify primary of fatal syncd error        |
+| `companion_syncd_snapshot_fatal_recovery` | Recovery from snapshot corruption          |
 
 ### Collection names (app state categories)
 
-| Collection | What it syncs |
-|-----------|---------------|
+| Collection       | What it syncs                       |
+| ---------------- | ----------------------------------- |
 | `critical_block` | Chat mutes, pin, archive (critical) |
-| `default` | General chat settings |
-| `regular_high` | Messages, media |
-| `regular_low` | Less critical state |
-| `md_msg_hist` | Multi-device message history |
+| `default`        | General chat settings               |
+| `regular_high`   | Messages, media                     |
+| `regular_low`    | Less critical state                 |
+| `md_msg_hist`    | Multi-device message history        |
 
 ### Dirty sync trigger
 
@@ -336,22 +344,22 @@ All other privacy settings use MEX queries — see [PRIVACY.md](PRIVACY.md).
 
 Known MEX privacy features (confirmed from `MexPrivacySettingsHandler`):
 
-| Feature name | What it controls |
-|-------------|-----------------|
-| `LAST_SEEN` | Who sees your last seen |
-| `ONLINE` | Who sees when you're online |
-| `PROFILE_PHOTO` | Who sees your profile picture |
-| `STATUS` | Who sees your status |
-| `READ_RECEIPTS` | Read receipt visibility |
-| `GROUPS` | Who can add you to groups |
-| `CALLS` | Who can call you |
-| `SCREENSHOT` | Screenshot blocking |
-| `LIVE_LOCATION` | Live location sharing |
-| `MESSAGES` | Who can message you |
-| `LINKED_PROFILES` | FB/IG profile linking visibility |
-| `COVER_PHOTO` | Cover photo visibility |
-| `GROUPCREATION` | Who can create groups with you |
-| `DEPENDENT_ACCOUNT_MESSAGES` | Messages in managed accounts |
+| Feature name                 | What it controls                 |
+| ---------------------------- | -------------------------------- |
+| `LAST_SEEN`                  | Who sees your last seen          |
+| `ONLINE`                     | Who sees when you're online      |
+| `PROFILE_PHOTO`              | Who sees your profile picture    |
+| `STATUS`                     | Who sees your status             |
+| `READ_RECEIPTS`              | Read receipt visibility          |
+| `GROUPS`                     | Who can add you to groups        |
+| `CALLS`                      | Who can call you                 |
+| `SCREENSHOT`                 | Screenshot blocking              |
+| `LIVE_LOCATION`              | Live location sharing            |
+| `MESSAGES`                   | Who can message you              |
+| `LINKED_PROFILES`            | FB/IG profile linking visibility |
+| `COVER_PHOTO`                | Cover photo visibility           |
+| `GROUPCREATION`              | Who can create groups with you   |
+| `DEPENDENT_ACCOUNT_MESSAGES` | Messages in managed accounts     |
 
 ---
 
@@ -381,17 +389,17 @@ JNI bridge for native protocol tree manipulation. Used by the native calling sta
 
 These namespaces appear in the codebase but were not fully analyzed:
 
-| Namespace | Likely purpose |
-|-----------|---------------|
-| `w:auth:backup:token` | Auth backup token exchange |
-| `w:auth:key` | Auth key operations |
-| `w:b` | Internal (unknown) |
-| `w:comms` | Communications (unknown) |
-| `w:comms:chat` | Chat communications (unknown) |
-| `w:biz` | Business features (see `business.js`) |
-| `w:biz:catalog` | Business catalog |
-| `w:biz:merchant_info` | Merchant info |
-| `w:qr` | QR code operations (separate from MEX qrCodeScan) |
-| `urn:xmpp:whatsapp:account` | Account operations |
-| `urn:xmpp:whatsapp:push` | Push notification tokens |
-| `urn:xmpp:ping` | XMPP keepalive ping |
+| Namespace                   | Likely purpose                                                             |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `w:auth:backup:token`       | Auth backup token exchange                                                 |
+| `w:auth:key`                | Auth key operations                                                        |
+| `w:b`                       | Internal                                                                   |
+| `w:comms`                   | Communications                                                             |
+| `w:comms:chat`              | Chat blocking toggle (`getChatBlockingStatus`, `updateChatBlockingStatus`) |
+| `w:biz`                     | Business features (see `business.js`)                                      |
+| `w:biz:catalog`             | Business catalog                                                           |
+| `w:biz:merchant_info`       | Merchant info                                                              |
+| `w:qr`                      | QR code operations (separate from MEX qrCodeScan)                          |
+| `urn:xmpp:whatsapp:account` | Account operations                                                         |
+| `urn:xmpp:whatsapp:push`    | Push notification tokens                                                   |
+| `urn:xmpp:ping`             | XMPP keepalive ping                                                        |

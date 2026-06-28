@@ -1,14 +1,16 @@
 node_modules
 package-lock.json
 .worktrees
-test
 docs
 fixtures
 *.txt
-test\**
 .claude
 Haiket.proto
 /assets
 *.apk
 /WhatsApp_2.26.20.8
 .remember
+/Chrome Wa Web
+/Opera Wa Web
+bot_message.rs
+/coverage

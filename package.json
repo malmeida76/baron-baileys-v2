@@ -23,7 +23,8 @@
   "files": [
     "src/**/*",
     "WAProto/**/*",
-    "engine-requirements.js"
+    "engine-requirements.js",
+    "documentation/**/*"
   ],
   "scripts": {
     "ncu": "npm-check-updates",

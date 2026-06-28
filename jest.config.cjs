@@ -12,7 +12,7 @@ module.exports = {
 	collectCoverageFrom: ['src/**/*.js', '!src/**/*.d.js'],
 	coverageThreshold: {
 		global: {
-			lines: 20
+			lines: 30
 		}
 	},
 	coverageReporters: ['text-summary', 'lcov'],

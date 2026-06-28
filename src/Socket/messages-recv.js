@@ -167,54 +167,122 @@ const makeMessagesRecvSocket = config => {
 			peerDataOperationRequestType: index_js_1.proto.Message.PeerDataOperationRequestType.COMPANION_META_NONCE_FETCH
 		})
 	}
-	// Handles mex newsletter notifications
-	const handleMexNewsletterNotification = async node => {
-		const mexNode = (0, WABinary_1.getBinaryNodeChild)(node, 'mex')
-		if (!mexNode?.content) {
-			logger.warn({ node }, 'Invalid mex newsletter notification')
+	// Handles mex notifications (newsletter and group XWA2 property updates).
+	// Wire format: notification[type=mex] → <update op_name="..."> → JSON payload in content bytes.
+	const handleMexNotification = async node => {
+		const updateNodes = (0, WABinary_1.getBinaryNodeChildren)(node, 'update')
+		if (!updateNodes.length) {
+			logger.debug({ node }, 'mex notification with no update children')
 			return
 		}
-		let data
-		try {
-			data = JSON.parse(mexNode.content.toString())
-		} catch (error) {
-			logger.error({ err: error, node }, 'Failed to parse mex newsletter notification')
-			return
-		}
-		const operation = data?.operation
-		const updates = data?.updates
-		if (!updates || !operation) {
-			logger.warn({ data }, 'Invalid mex newsletter notification content')
-			return
-		}
-		logger.info({ operation, updates }, 'got mex newsletter notification')
-		switch (operation) {
-			case 'NotificationNewsletterUpdate':
-				for (const update of updates) {
-					if (update.jid && update.settings && Object.keys(update.settings).length > 0) {
+		for (const updateNode of updateNodes) {
+			const opName = updateNode.attrs?.op_name
+			if (!opName) continue
+			let payload
+			try {
+				const raw = updateNode.content?.text ?? updateNode.content?.toString?.()
+				payload = raw ? JSON.parse(raw) : null
+			} catch (e) {
+				logger.error({ err: e, opName }, 'failed to parse mex update payload')
+				continue
+			}
+			if (!payload?.data) {
+				logger.debug({ opName }, 'mex update with no data field')
+				continue
+			}
+			const d = payload.data
+			switch (opName) {
+				case 'NotificationNewsletterUpdate': {
+					// d.xwa2_notify_newsletter_on_metadata_update: { id, thread_metadata: { settings } }
+					const upd = d.xwa2_notify_newsletter_on_metadata_update
+					if (upd?.id) {
 						ev.emit('newsletter-settings.update', {
-							id: update.jid,
-							update: update.settings
+							id: upd.id,
+							update: upd.thread_metadata?.settings ?? {}
 						})
 					}
+					break
 				}
-				break
-			case 'NotificationNewsletterAdminPromote':
-				for (const update of updates) {
-					if (update.jid && update.user) {
+				case 'NotificationNewsletterJoin': {
+					// d.xwa2_notify_newsletter_on_join: full newsletter metadata on subscribe
+					const upd = d.xwa2_notify_newsletter_on_join
+					if (upd?.id) {
 						ev.emit('newsletter-participants.update', {
-							id: update.jid,
+							id: upd.id,
 							author: node.attrs.from,
-							user: update.user,
+							user: (0, WABinary_1.jidNormalizedUser)(node.attrs.from),
+							new_role: upd.viewer_metadata?.role ?? 'SUBSCRIBER',
+							action: 'join',
+							metadata: upd.thread_metadata
+						})
+					}
+					break
+				}
+				case 'NotificationNewsletterMuteChange': {
+					// d.xwa2_notify_newsletter_on_mute_change: { id, mute: "ON"|"OFF" }
+					const upd = d.xwa2_notify_newsletter_on_mute_change
+					if (upd?.id) {
+						ev.emit('newsletter-settings.update', {
+							id: upd.id,
+							update: { mute: upd.mute }
+						})
+					}
+					break
+				}
+				case 'NotificationNewsletterUserSettingChange': {
+					// d.xwa2_notify_newsletter_on_user_setting_change: { id, setting: { type, value } }
+					const upd = d.xwa2_notify_newsletter_on_user_setting_change
+					if (upd?.id && upd.setting) {
+						ev.emit('newsletter-settings.update', {
+							id: upd.id,
+							update: { userSetting: upd.setting }
+						})
+					}
+					break
+				}
+				case 'NotificationNewsletterAdminPromote': {
+					// legacy format kept for compat
+					const upd = d.xwa2_notify_newsletter_on_admin_promote
+					if (upd?.id) {
+						ev.emit('newsletter-participants.update', {
+							id: upd.id,
+							author: node.attrs.from,
+							user: upd.user,
 							new_role: 'ADMIN',
 							action: 'promote'
 						})
 					}
+					break
 				}
-				break
-			default:
-				logger.info({ operation, data }, 'Unhandled mex newsletter notification')
-				break
+				case 'NotificationGroupMemberLinkPropertyUpdate': {
+					// d.xwa2_notify_group_on_prop_change: { id, properties: { member_link_mode } }
+					const upd = d.xwa2_notify_group_on_prop_change
+					if (upd?.id && upd.properties?.member_link_mode !== undefined) {
+						ev.emit('groups.update', [
+							{
+								id: upd.id,
+								memberAddMode: upd.properties.member_link_mode
+							}
+						])
+					}
+					break
+				}
+				case 'NotificationGroupLimitSharingPropertyUpdate': {
+					// d.xwa2_notify_group_on_prop_change: { id, properties: { limit_sharing } }
+					const upd = d.xwa2_notify_group_on_prop_change
+					if (upd?.id && upd.properties?.limit_sharing !== undefined) {
+						ev.emit('groups.update', [
+							{
+								id: upd.id,
+								limitSharing: upd.properties.limit_sharing
+							}
+						])
+					}
+					break
+				}
+				default:
+					logger.debug({ opName, from: node.attrs.from }, 'unhandled mex op')
+			}
 		}
 	}
 	// Handles newsletter notifications
@@ -292,16 +360,31 @@ const makeMessagesRecvSocket = config => {
 					}
 				}
 				break
-			case 'live_updates':
-				// Live view count / engagement update
-				const liveCount = parseInt(child.attrs.count || child.content?.toString() || '0', 10)
-				ev.emit('newsletter.live-update', {
-					id: from,
-					server_id: child.attrs.message_id || child.attrs.server_id,
-					liveViewers: liveCount,
-					timestamp: child.attrs.t ? +child.attrs.t : undefined
-				})
+			case 'live_updates': {
+				// Live engagement updates: reactions + forwards per message.
+				// Wire: <live_updates> → <messages t="..."> → <message server_id="...">
+				//         → <forwards_count count="N">, <reactions> → <reaction code="X" count="N">
+				const messagesNode = (0, WABinary_1.getBinaryNodeChild)(child, 'messages')
+				const msgTs = messagesNode?.attrs?.t ? +messagesNode.attrs.t : undefined
+				for (const msgNode of (0, WABinary_1.getBinaryNodeChildren)(messagesNode ?? child, 'message')) {
+					const serverId = msgNode.attrs.server_id
+					const fwdNode = (0, WABinary_1.getBinaryNodeChild)(msgNode, 'forwards_count')
+					const forwardsCount = fwdNode?.attrs?.count !== undefined ? +fwdNode.attrs.count : undefined
+					const reactionsNode = (0, WABinary_1.getBinaryNodeChild)(msgNode, 'reactions')
+					const reactions = (0, WABinary_1.getBinaryNodeChildren)(reactionsNode ?? msgNode, 'reaction').map(r => ({
+						code: r.attrs.code,
+						count: +r.attrs.count
+					}))
+					ev.emit('newsletter.live-update', {
+						id: from,
+						server_id: serverId,
+						timestamp: msgTs,
+						forwardsCount,
+						reactions
+					})
+				}
 				break
+			}
 			case 'pin':
 				ev.emit('newsletter.pin', {
 					id: from,
@@ -1113,7 +1196,7 @@ const makeMessagesRecvSocket = config => {
 				await handleNewsletterNotification(node)
 				break
 			case 'mex':
-				await handleMexNewsletterNotification(node)
+				await handleMexNotification(node)
 				break
 			case 'w:gp2':
 				// TODO: HANDLE PARTICIPANT_PN

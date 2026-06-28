@@ -329,7 +329,7 @@ const makeSocket = config => {
 		const result = await awaitNextMessage(init)
 		const handshake = index_js_1.proto.HandshakeMessage.decode(result)
 		logger.trace({ handshake }, 'handshake recv from WA')
-		const keyEnc = noise.processHandshake(handshake, creds.noiseKey)
+		const { keyEnc, serverStaticPub } = noise.processHandshake(handshake, creds.noiseKey)
 		let node
 		if (!creds.me) {
 			node = (0, Utils_1.generateRegistrationNode)(creds, config)
@@ -348,6 +348,9 @@ const makeSocket = config => {
 			}).finish()
 		)
 		await noise.finishInit()
+		if (serverStaticPub && !creds.serverStaticPub) {
+			ev.emit('creds.update', { serverStaticPub })
+		}
 		startKeepAliveRequest()
 	}
 	const getAvailablePreKeysOnServer = async () => {

@@ -1,6 +1,12 @@
 'use strict'
 Object.defineProperty(exports, '__esModule', { value: true })
-exports.signedKeyPair = exports.Curve = exports.generateSignalPubKey = exports.hkdf = exports.md5 = void 0
+exports.signedKeyPair =
+	exports.Curve =
+	exports.generateSignalPubKey =
+	exports.getEnabledFeatures =
+	exports.hkdf =
+	exports.md5 =
+		void 0
 exports.aesEncryptGCM = aesEncryptGCM
 exports.aesDecryptGCM = aesDecryptGCM
 exports.aesEncryptCTR = aesEncryptCTR
@@ -19,6 +25,7 @@ const rb = require('whatsapp-rust-bridge-baron')
 // ── Re-exports from Rust ─────────────────────────────────────────────────────
 Object.defineProperty(exports, 'md5', { enumerable: true, get: () => rb.md5 })
 Object.defineProperty(exports, 'hkdf', { enumerable: true, get: () => rb.hkdf })
+Object.defineProperty(exports, 'getEnabledFeatures', { enumerable: true, get: () => rb.getEnabledFeatures })
 
 // ── Signal pub key helper ─────────────────────────────────────────────────────
 const generateSignalPubKey = pubKey =>

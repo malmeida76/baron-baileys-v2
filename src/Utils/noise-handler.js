@@ -140,13 +140,20 @@ const makeNoiseHandler = ({
 				throw new boom_1.Boom('certification match failed', { statusCode: 400 })
 			}
 
+			// Extract server static key from leaf cert — used to cache for NoiseIkSession (fast reconnect)
+			let serverStaticPub
+			try {
+				const leafDetails = index_js_1.proto.CertChain.NoiseCertificate.Details.decode(leaf.details)
+				if (leafDetails.key?.length === 32) serverStaticPub = Buffer.from(leafDetails.key)
+			} catch {}
+
 			// Encrypt our static key and do final ECDH
 			const keyEnc = session.processHandshakeFinish(
 				noiseKey.public instanceof Uint8Array ? noiseKey.public : new Uint8Array(noiseKey.public),
 				noiseKey.private instanceof Uint8Array ? noiseKey.private : new Uint8Array(noiseKey.private),
 				serverHello.ephemeral
 			)
-			return Buffer.from(keyEnc)
+			return { keyEnc: Buffer.from(keyEnc), serverStaticPub }
 		},
 		encodeFrame: data => {
 			const u8 = data instanceof Uint8Array ? data : new Uint8Array(data.buffer, data.byteOffset, data.byteLength)

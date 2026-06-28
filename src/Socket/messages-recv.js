@@ -1290,6 +1290,23 @@ const makeMessagesRecvSocket = config => {
 						const type = attrs.action === 'block' ? 'add' : 'remove'
 						ev.emit('blocklist.update', { blocklist, type })
 					}
+				} else if (child.tag === 'devices') {
+					// Full device-list sync: all linked devices + signed key-index-list.
+					// Sent when a device is added, removed, or key index changes.
+					const dhash = child.attrs.dhash
+					const deviceNodes = (0, WABinary_1.getBinaryNodeChildren)(child, 'device')
+					const keyIndexListNode = (0, WABinary_1.getBinaryNodeChild)(child, 'key-index-list')
+					const devices = deviceNodes.map(d => ({
+						jid: d.attrs.jid ? String(d.attrs.jid) : undefined,
+						keyIndex: d.attrs['key-index'] ? +d.attrs['key-index'] : undefined
+					}))
+					logger.info({ dhash, deviceCount: devices.length }, 'account devices list synced')
+					ev.emit('account.devices-synced', {
+						dhash,
+						devices,
+						keyIndexListTimestamp: keyIndexListNode?.attrs?.ts ? +keyIndexListNode.attrs.ts : undefined,
+						keyIndexList: keyIndexListNode?.content ? Buffer.from(keyIndexListNode.content) : undefined
+					})
 				}
 				break
 			case 'business':

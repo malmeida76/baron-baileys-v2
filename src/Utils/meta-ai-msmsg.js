@@ -5,8 +5,6 @@ const { proto } = require('../../WAProto')
 
 const BOT_MESSAGE_INFO = 'Bot Message'
 const KEY_LENGTH = 32
-const AUTH_TAG_LENGTH = 16
-
 const MSG_ID_HEX_RE = /^[0-9A-Fa-f]{32}$/
 
 const unpadRandomMax16 = value => {
@@ -14,249 +12,129 @@ const unpadRandomMax16 = value => {
 	if (!bytes.length) {
 		throw new Error('unpadPkcs7 given empty bytes')
 	}
-
 	const padLength = bytes[bytes.length - 1]
 	if (padLength > bytes.length) {
 		throw new Error(`unpad given ${bytes.length} bytes, but pad is ${padLength}`)
 	}
-
 	return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.length - padLength)
 }
 
 const toBuffer = value => {
-	if (Buffer.isBuffer(value)) {
-		return value
-	}
-
-	if (value instanceof Uint8Array) {
-		return Buffer.from(value.buffer, value.byteOffset, value.byteLength)
-	}
-
+	if (Buffer.isBuffer(value)) return value
+	if (value instanceof Uint8Array) return Buffer.from(value.buffer, value.byteOffset, value.byteLength)
 	return Buffer.from(value)
 }
 
 const normalizeLidJid = jid => {
-	if (!jid || !jid.endsWith('@lid') || !jid.includes(':')) {
-		return jid
-	}
-
+	if (!jid || !jid.endsWith('@lid') || !jid.includes(':')) return jid
 	return `${jid.split(':')[0]}@lid`
 }
 
-const buildMessageIdRepresentations = messageId => {
-	const ascii = Buffer.from(messageId)
-	const binary = MSG_ID_HEX_RE.test(messageId) ? Buffer.from(messageId, 'hex') : ascii
-	return [
-		{ label: 'msgIdAscii', value: ascii },
-		...(binary.equals(ascii) ? [] : [{ label: 'msgIdBinary', value: binary }])
-	]
+// Returns [ascii] normally, or [ascii, hex-decoded] when msgId is a 32-char hex string.
+// WA can encode msgId as the hex-encoded form of its binary representation.
+const msgIdForms = msgId => {
+	const ascii = Buffer.from(msgId)
+	if (!MSG_ID_HEX_RE.test(msgId)) return [ascii]
+	const binary = Buffer.from(msgId, 'hex')
+	return binary.equals(ascii) ? [ascii] : [ascii, binary]
 }
 
-const pushUnique = (items, seen, item) => {
-	const key = JSON.stringify([
-		item.messageId,
-		item.idSource,
-		item.idSources,
-		item.infoSource,
-		item.aadSource,
-		item.info.toString('hex'),
-		item.aad.toString('hex')
-	])
-
-	if (!seen.has(key)) {
-		seen.add(key)
-		items.push(item)
-	}
-}
-
-const getCandidateIds = messageKey => {
-	const orderedCandidates = [
-		messageKey?.botType === 'full'
-			? { source: 'stanzaId', messageId: messageKey?.stanzaId }
-			: { source: 'botEditTargetId', messageId: messageKey?.botEditTargetId },
-		{ source: 'targetId', messageId: messageKey?.targetId },
-		{ source: 'metaTargetId', messageId: messageKey?.metaTargetId },
-		{ source: 'stanzaId', messageId: messageKey?.stanzaId }
-	]
-
-	const targetIdCandidates = Array.isArray(messageKey?.targetIdCandidates) ? messageKey.targetIdCandidates : []
-	for (let index = 0; index < targetIdCandidates.length; index += 1) {
-		orderedCandidates.push({
-			source: `targetIdCandidates[${index}]`,
-			messageId: targetIdCandidates[index]
-		})
-	}
-
-	const grouped = new Map()
-	for (const candidate of orderedCandidates) {
-		if (!candidate.messageId) {
-			continue
-		}
-
-		const messageId = String(candidate.messageId)
-		const existing = grouped.get(messageId)
-		if (existing) {
-			if (!existing.idSources.includes(candidate.source)) {
-				existing.idSources.push(candidate.source)
-			}
-		} else {
-			grouped.set(messageId, {
-				messageId,
-				idSource: candidate.source,
-				idSources: [candidate.source]
-			})
-		}
-	}
-
-	return Array.from(grouped.values())
-}
-
-const getJidCandidates = messageKey => {
-	const ordered = [
-		{ source: 'meId', jid: messageKey?.meId },
-		{ source: 'conversationJid', jid: messageKey?.conversationJid },
-		{ source: 'senderJid', jid: messageKey?.senderJid },
-		{ source: 'meLidNormalized', jid: normalizeLidJid(messageKey?.meLid) }
-	]
-
+// Ordered msgId candidates per the Rust BotMessageContext:
+//   botEditTargetId when editing, stanzaId for the normal full response, metaTargetId as fallback.
+const selectMsgIdCandidates = messageKey => {
 	const seen = new Set()
-	const candidates = []
-	for (const candidate of ordered) {
-		if (!candidate.jid) {
-			continue
-		}
-
-		const jid = String(candidate.jid)
-		if (!seen.has(jid)) {
-			seen.add(jid)
-			candidates.push({ source: candidate.source, jid, value: Buffer.from(jid) })
+	const result = []
+	for (const id of [messageKey?.botEditTargetId, messageKey?.stanzaId, messageKey?.metaTargetId]) {
+		const s = id ? String(id) : ''
+		if (s && !seen.has(s)) {
+			seen.add(s)
+			result.push(s)
 		}
 	}
-
-	return candidates
+	return result
 }
 
-const buildMsmsgDecryptionStrategies = messageKey => {
-	const botJid = String(messageKey?.participant || '')
-	const botJidBuffer = Buffer.from(botJid)
-	const targetIds = getCandidateIds(messageKey)
-	const jidCandidates = getJidCandidates(messageKey)
-	const primaryJid = jidCandidates[0]
-	const alternateJid = jidCandidates.find(
-		candidate => candidate.source !== primaryJid?.source && candidate.jid !== botJid
-	)
-	const strategies = []
+// Ordered target_sender_user_jid candidates: meId (already non-AD form) then normalized meLid.
+const selectTargetJidCandidates = messageKey => {
 	const seen = new Set()
-
-	for (const idCandidate of targetIds) {
-		const idForms = buildMessageIdRepresentations(idCandidate.messageId)
-		for (const idForm of idForms) {
-			pushUnique(strategies, seen, {
-				mode: '2step',
-				idSource: idCandidate.idSource,
-				idSources: idCandidate.idSources,
-				infoSource: `${idForm.label}+meId+botJid`,
-				aadSource: `${idForm.label}+0+botJid`,
-				authTagLayout: 'trailing',
-				messageId: idCandidate.messageId,
-				info: Buffer.concat([idForm.value, primaryJid.value, botJidBuffer, Buffer.alloc(0)]),
-				aad: Buffer.concat([idForm.value, Buffer.from([0]), botJidBuffer]),
-				attemptLabel: `${idCandidate.idSource}:${idForm.label}:primary`
-			})
-
-			if (alternateJid) {
-				pushUnique(strategies, seen, {
-					mode: '2step',
-					idSource: idCandidate.idSource,
-					idSources: idCandidate.idSources,
-					infoSource: `${idForm.label}+${alternateJid.source}+botJid`,
-					aadSource: `${idForm.label}+0+${alternateJid.source}`,
-					authTagLayout: 'trailing',
-					messageId: idCandidate.messageId,
-					info: Buffer.concat([idForm.value, alternateJid.value, botJidBuffer, Buffer.alloc(0)]),
-					aad: Buffer.concat([idForm.value, Buffer.from([0]), alternateJid.value]),
-					attemptLabel: `${idCandidate.idSource}:${idForm.label}:${alternateJid.source}`
-				})
-			}
+	const result = []
+	for (const jid of [messageKey?.meId, normalizeLidJid(messageKey?.meLid)]) {
+		const s = jid ? String(jid) : ''
+		if (s && !seen.has(s)) {
+			seen.add(s)
+			result.push(s)
 		}
 	}
-
-	return strategies.slice(0, 12)
-}
-
-const assertRequired = (value, label) => {
-	if (
-		!value ||
-		(Buffer.isBuffer(value) && value.length === 0) ||
-		(value instanceof Uint8Array && value.byteLength === 0)
-	) {
-		throw new Error(`Missing required ${label} for msmsg decryption`)
-	}
-}
-
-const decryptWithStrategy = (messageSecret, msMsg, strategy) => {
-	const baseSecret = Buffer.from(rb.hkdf(toBuffer(messageSecret), KEY_LENGTH, { info: BOT_MESSAGE_INFO }))
-	const key = Buffer.from(rb.hkdf(baseSecret, KEY_LENGTH, { info: strategy.info }))
-	const payload = toBuffer(msMsg.encPayload)
-	// ciphertext = payload without last 16 bytes (auth tag) + auth tag appended → standard GCM layout
-	const ciphertextWithTag = Buffer.concat([payload.slice(0, -AUTH_TAG_LENGTH), payload.slice(-AUTH_TAG_LENGTH)])
-	return Buffer.from(rb.aesDecryptGCM(ciphertextWithTag, key, toBuffer(msMsg.encIv), strategy.aad))
+	return result
 }
 
 const decodeDecryptedMsmsgMessage = decrypted => {
-	const messageBuffer = toBuffer(decrypted)
-
+	const buf = toBuffer(decrypted)
 	try {
-		const unpadded = Buffer.from(unpadRandomMax16(messageBuffer))
+		const unpadded = Buffer.from(unpadRandomMax16(buf))
 		const decoded = proto.Message.decode(unpadded)
-		const hasContent = Object.keys(decoded).some(key => key !== 'messageContextInfo' && decoded[key] != null)
-		if (hasContent) {
-			return decoded
-		}
+		const hasContent = Object.keys(decoded).some(k => k !== 'messageContextInfo' && decoded[k] != null)
+		if (hasContent) return decoded
 	} catch {}
-
-	return proto.Message.decode(messageBuffer)
+	return proto.Message.decode(buf)
 }
 
+/**
+ * Decrypts <enc type="msmsg"> bot messages.
+ *
+ * Two-pass HKDF — algorithm from bot_message.rs (BotMessageContext):
+ *   k1    = HKDF(messageSecret, salt=∅, info="Bot Message",                     32)
+ *   k2    = HKDF(k1,            salt=∅, info=msgID||target_sender_jid||bot_jid, 32)
+ *   AAD   = msgID || 0x00 || bot_user_jid
+ *   plain = AES-256-GCM.Decrypt(k2, encIv, encPayload, AAD)
+ *
+ * k1 is shared across all candidates and derived once.
+ * AAD always uses bot_user_jid, never target_sender_jid.
+ */
 const decryptMsmsgBotMessage = async (messageSecret, messageKey, msMsg) => {
-	assertRequired(messageSecret, 'messageSecret')
-	assertRequired(messageKey?.participant, 'participant')
-	assertRequired(messageKey?.meId, 'meId')
-	assertRequired(msMsg?.encIv, 'encIv')
-	assertRequired(msMsg?.encPayload, 'encPayload')
-	if (getCandidateIds(messageKey).length === 0) {
-		throw new Error('Missing required target message id for msmsg decryption')
+	if (!messageSecret || (messageSecret instanceof Uint8Array && !messageSecret.byteLength)) {
+		throw new Error('Missing required messageSecret for msmsg decryption')
 	}
+	if (!messageKey?.participant) throw new Error('Missing required participant for msmsg decryption')
+	if (!messageKey?.meId) throw new Error('Missing required meId for msmsg decryption')
+	if (!msMsg?.encIv) throw new Error('Missing required encIv for msmsg decryption')
+	if (!msMsg?.encPayload) throw new Error('Missing required encPayload for msmsg decryption')
 
-	const strategies = buildMsmsgDecryptionStrategies(messageKey)
-	const attemptedStrategies = []
+	const msgIdCandidates = selectMsgIdCandidates(messageKey)
+	if (!msgIdCandidates.length) throw new Error('Missing required target message id for msmsg decryption')
+
+	const targetJidCandidates = selectTargetJidCandidates(messageKey)
+	if (!targetJidCandidates.length) throw new Error('Missing required target JID for msmsg decryption')
+
+	const botJidBuf = Buffer.from(String(messageKey.participant))
+	const payload = toBuffer(msMsg.encPayload)
+	const iv = toBuffer(msMsg.encIv)
+
+	// k1 depends only on messageSecret — derive once and reuse across all candidates
+	const baseKey = Buffer.from(rb.hkdf(toBuffer(messageSecret), KEY_LENGTH, { info: BOT_MESSAGE_INFO }))
+
 	let lastError
-
-	for (const strategy of strategies) {
-		const attempt = {
-			idSource: strategy.idSource,
-			idSources: strategy.idSources,
-			infoSource: strategy.infoSource,
-			aadSource: strategy.aadSource,
-			messageId: strategy.messageId
-		}
-
-		try {
-			return await decryptWithStrategy(messageSecret, msMsg, strategy)
-		} catch (error) {
-			attemptedStrategies.push(attempt)
-			lastError = error
+	for (const msgId of msgIdCandidates) {
+		for (const idBuf of msgIdForms(msgId)) {
+			for (const targetJid of targetJidCandidates) {
+				const info = Buffer.concat([idBuf, Buffer.from(targetJid), botJidBuf])
+				const key = Buffer.from(rb.hkdf(baseKey, KEY_LENGTH, { info }))
+				const aad = Buffer.concat([idBuf, Buffer.from([0x00]), botJidBuf])
+				try {
+					return Buffer.from(rb.aesDecryptGCM(payload, key, iv, aad))
+				} catch (e) {
+					lastError = e
+				}
+			}
 		}
 	}
 
-	const error = new Error('Failed to decrypt msmsg with bounded deterministic strategies')
-	error.attemptedStrategies = attemptedStrategies
-	error.cause = lastError
-	throw error
+	const err = new Error('msmsg decryption failed: all key derivation candidates exhausted')
+	err.cause = lastError
+	throw err
 }
 
 module.exports = {
-	buildMsmsgDecryptionStrategies,
 	decodeDecryptedMsmsgMessage,
 	decryptMsmsgBotMessage
 }

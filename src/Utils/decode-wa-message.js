@@ -388,17 +388,11 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 										participant: author,
 										meId: metaTargetSenderJid || `${meLid.split(`:`)[0]}@lid`,
 										meLid,
-										conversationJid: sender,
-										senderJid: metaTargetSenderJid,
-										botType,
 										botEditTargetId,
 										metaTargetId,
-										stanzaId: stanza.attrs?.id,
-										targetId: botEditTargetId || metaTargetId || stanza.attrs?.id,
-										targetIdCandidates: secretIdCandidates
+										stanzaId: stanza.attrs?.id
 									}
 									let decryptErr
-									const candidateAttemptSummaries = []
 									for (const candidate of secretCandidates) {
 										try {
 											msgBuffer = await (0, meta_ai_msmsg_1.decryptMsmsgBotMessage)(candidate.secret, helperKey, msMsg)
@@ -406,24 +400,16 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 											break
 										} catch (e) {
 											decryptErr = e
-											if (Array.isArray(e?.attemptedStrategies) && e.attemptedStrategies.length) {
-												candidateAttemptSummaries.push({
-													secretSource: candidate.source,
-													attemptedStrategies: e.attemptedStrategies
-												})
-											}
 										}
 									}
-									if (!msgBuffer && candidateAttemptSummaries.length) {
+									if (!msgBuffer && decryptErr) {
 										logger.warn(
 											{
 												secretCandidateSources: secretCandidates.map(candidate => candidate.source),
-												attemptsBySecret: candidateAttemptSummaries
+												cause: decryptErr?.message
 											},
 											'msmsg: helper decryption failed for all candidate secrets'
 										)
-									}
-									if (!msgBuffer && decryptErr) {
 										throw decryptErr
 									}
 								}

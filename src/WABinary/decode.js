@@ -110,7 +110,7 @@ const decodeDecompressedBinaryNode = (buffer, opts, indexRef = { index: 0 }) => 
 		return value
 	}
 	const readStringFromChars = length => {
-		return readBytes(length).toString('utf-8')
+		return readBytes(length).toString('utf8')
 	}
 	const readInt = (n, littleEndian = false) => {
 		checkEOS(n)
@@ -304,7 +304,9 @@ const decodeDecompressedBinaryNode = (buffer, opts, indexRef = { index: 0 }) => 
 		const value = dict[index2]
 		if (typeof value === 'undefined') {
 			// Unknown token in known dictionary — token table may be outdated
-			process.stderr.write(`[WABinary] unknown double-byte token dict=${index1} idx=${index2} — token table outdated?\n`)
+			process.stderr.write(
+				`[WABinary] unknown double-byte token dict=${index1} idx=${index2} — token table outdated?\n`
+			)
 			return ''
 		}
 		return value

@@ -1801,7 +1801,7 @@ const makeMessagesSocket = config => {
 								title: product.title || '',
 								description: product.description || '',
 								currencyCode: product.currencyCode || 'USD',
-								priceAmount1000: parseInt(product.priceAmount1000) || 0,
+								priceAmount1000: parseInt(product.priceAmount1000, 10) || 0,
 								retailerId: product.retailerId || '',
 								url: product.url || '',
 								productImageCount: product.productImageCount || 1

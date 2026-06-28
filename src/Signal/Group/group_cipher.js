@@ -74,14 +74,14 @@ class GroupCipher {
 	async getPlainText(iv, key, ciphertext) {
 		try {
 			return Buffer.from(rb.aesDecryptWithIV(ciphertext, key, iv))
-		} catch (e) {
+		} catch {
 			throw new Error('InvalidMessageException')
 		}
 	}
 	async getCipherText(iv, key, plaintext) {
 		try {
 			return Buffer.from(rb.aesEncrypWithIV(plaintext, key, iv))
-		} catch (e) {
+		} catch {
 			throw new Error('InvalidMessageException')
 		}
 	}

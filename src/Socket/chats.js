@@ -179,7 +179,7 @@ const makeChatsSocket = config => {
 		const privacyNode = result?.content?.[0]
 		if (!privacyNode) return null
 		const lists = []
-		for (const listNode of (privacyNode.content || [])) {
+		for (const listNode of privacyNode.content || []) {
 			const { type, id, listname, emoji, selected, deleted } = listNode.attrs || {}
 			const members = (listNode.content || []).map(u => u.attrs?.jid).filter(Boolean)
 			lists.push({ type, id, listname, emoji, selected: selected === 'true', deleted: deleted === 'true', members })
@@ -272,12 +272,35 @@ const makeChatsSocket = config => {
 		const timeframeNode = (0, WABinary_1.getBinaryNodeChild)(result, 'timeframe')
 		if (!limitsNode) return null
 		return {
-			messagesLeft: parseInt(limitsNode.attrs?.messages_left ?? (0, WABinary_1.getBinaryNodeChild)(limitsNode, 'messages_left')?.content ?? '0'),
-			totalLimit: parseInt(limitsNode.attrs?.total_limit ?? (0, WABinary_1.getBinaryNodeChild)(limitsNode, 'total_limit')?.content ?? '0'),
-			isHeavySender: (limitsNode.attrs?.is_heavy_sender ?? (0, WABinary_1.getBinaryNodeChild)(limitsNode, 'is_heavy_sender')?.content) === 'true',
-			startTs: parseInt(timeframeNode?.attrs?.start_ts_s ?? (0, WABinary_1.getBinaryNodeChild)(timeframeNode, 'start_ts_s')?.content ?? '0'),
-			endTs: parseInt(timeframeNode?.attrs?.end_ts_s ?? (0, WABinary_1.getBinaryNodeChild)(timeframeNode, 'end_ts_s')?.content ?? '0'),
-			resetTs: parseInt(timeframeNode?.attrs?.reset_ts_s ?? (0, WABinary_1.getBinaryNodeChild)(timeframeNode, 'reset_ts_s')?.content ?? '0')
+			messagesLeft: parseInt(
+				limitsNode.attrs?.messages_left ??
+					(0, WABinary_1.getBinaryNodeChild)(limitsNode, 'messages_left')?.content ??
+					'0',
+				10
+			),
+			totalLimit: parseInt(
+				limitsNode.attrs?.total_limit ?? (0, WABinary_1.getBinaryNodeChild)(limitsNode, 'total_limit')?.content ?? '0',
+				10
+			),
+			isHeavySender:
+				(limitsNode.attrs?.is_heavy_sender ??
+					(0, WABinary_1.getBinaryNodeChild)(limitsNode, 'is_heavy_sender')?.content) === 'true',
+			startTs: parseInt(
+				timeframeNode?.attrs?.start_ts_s ??
+					(0, WABinary_1.getBinaryNodeChild)(timeframeNode, 'start_ts_s')?.content ??
+					'0',
+				10
+			),
+			endTs: parseInt(
+				timeframeNode?.attrs?.end_ts_s ?? (0, WABinary_1.getBinaryNodeChild)(timeframeNode, 'end_ts_s')?.content ?? '0',
+				10
+			),
+			resetTs: parseInt(
+				timeframeNode?.attrs?.reset_ts_s ??
+					(0, WABinary_1.getBinaryNodeChild)(timeframeNode, 'reset_ts_s')?.content ??
+					'0',
+				10
+			)
 		}
 	}
 
@@ -634,7 +657,7 @@ const makeChatsSocket = config => {
 		const appStateSyncKeyCache = new Map()
 		const getCachedAppStateSyncKey = async keyId => {
 			if (appStateSyncKeyCache.has(keyId)) {
-				return appStateSyncKeyCache.get(keyId) ?? undefined
+				return appStateSyncKeyCache.get(keyId)
 			}
 			const key = await getAppStateSyncKey(keyId)
 			appStateSyncKeyCache.set(keyId, key ?? null)
@@ -659,7 +682,7 @@ const makeChatsSocket = config => {
 					const result = await authState.keys.get('app-state-sync-version', [name])
 					let state = result[name]
 					if (state) {
-						if (typeof initialVersionMap[name] === 'undefined') {
+						if (initialVersionMap[name] === undefined) {
 							initialVersionMap[name] = state.version
 						}
 					} else {

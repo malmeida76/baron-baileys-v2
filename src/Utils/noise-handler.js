@@ -85,7 +85,7 @@ const makeNoiseHandler = ({
 				} else {
 					try {
 						frame = rustNodeToJs(item.toJSON())
-					} catch (e) {
+					} catch {
 						continue
 					}
 				}
@@ -154,14 +154,13 @@ const makeNoiseHandler = ({
 		},
 		decodeFrame: async (newData, onFrame) => {
 			if (isWaitingForTransport) {
-				pendingBytes = pendingBytes
-					? Buffer.concat([pendingBytes, Buffer.from(newData)])
-					: Buffer.from(newData)
+				pendingBytes = pendingBytes ? Buffer.concat([pendingBytes, Buffer.from(newData)]) : Buffer.from(newData)
 				pendingOnFrame = onFrame
 				return
 			}
 
-			const u8 = newData instanceof Uint8Array ? newData : new Uint8Array(newData.buffer, newData.byteOffset, newData.byteLength)
+			const u8 =
+				newData instanceof Uint8Array ? newData : new Uint8Array(newData.buffer, newData.byteOffset, newData.byteLength)
 			const frames = session.decodeFrame(u8)
 
 			for (let i = 0; i < frames.length; i++) {

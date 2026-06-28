@@ -64,7 +64,7 @@ async function buildMergedTcTokenIndexWrite(keys, addedJids) {
 // WA Web has separate sender/receiver AB props for these but they're identical today
 function isTcTokenExpired(timestamp) {
 	if (timestamp === null || timestamp === undefined) return true
-	const ts = typeof timestamp === 'string' ? parseInt(timestamp) : timestamp
+	const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp
 	if (isNaN(ts)) return true
 	const now = Math.floor(Date.now() / 1000)
 	const currentBucket = Math.floor(now / TC_TOKEN_BUCKET_DURATION)

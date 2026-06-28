@@ -22,7 +22,7 @@ class SenderKeyDistributionMessage extends ciphertext_message_1.CiphertextMessag
 						? Buffer.from(distributionMessage.signingKey, 'base64')
 						: distributionMessage.signingKey
 			} catch (e) {
-				throw new Error(String(e))
+				throw e instanceof Error ? e : new Error(String(e))
 			}
 		} else {
 			const version = this.intsToByteHighAndLow(this.CURRENT_VERSION, this.CURRENT_VERSION)

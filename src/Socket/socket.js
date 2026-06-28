@@ -607,7 +607,7 @@ const makeSocket = config => {
 	}
 	const requestPairingCode = async (phoneNumber, customPairingCode) => {
 		const pairingCode = customPairingCode ?? (0, Utils_1.bytesToCrockford)((0, crypto_1.randomBytes)(5))
-		if (customPairingCode && customPairingCode?.length !== 8) {
+		if (customPairingCode && customPairingCode.length !== 8) {
 			throw new Error('Custom pairing code must be exactly 8 chars')
 		}
 		authState.creds.pairingCode = pairingCode
@@ -736,7 +736,7 @@ const makeSocket = config => {
 				void end(new boom_1.Boom('QR refs attempts ended', { statusCode: Types_1.DisconnectReason.timedOut }))
 				return
 			}
-			const ref = refNode.content.toString('utf-8')
+			const ref = refNode.content.toString('utf8')
 			const qr = [ref, noiseKeyB64, identityKeyB64, advB64].join(',')
 			ev.emit('connection.update', { qr })
 			qrTimer = setTimeout(genPairQR, qrMs)
@@ -842,10 +842,13 @@ const makeSocket = config => {
 		const tmNode = (0, WABinary_1.getBinaryNodeChild)(node, 'thread_metadata')
 		const items = (0, WABinary_1.getBinaryNodeChildren)(tmNode, 'item')
 		if (items.length) {
-			ev.emit('thread-metadata.update', items.map(item => ({
-				jid: item.attrs.from,
-				t: item.attrs.t ? +item.attrs.t : undefined
-			})))
+			ev.emit(
+				'thread-metadata.update',
+				items.map(item => ({
+					jid: item.attrs.from,
+					t: item.attrs.t ? +item.attrs.t : undefined
+				}))
+			)
 		}
 	})
 	ws.on('CB:ib,,edge_routing', node => {

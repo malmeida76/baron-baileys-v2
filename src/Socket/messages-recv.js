@@ -144,13 +144,14 @@ const makeMessagesRecvSocket = config => {
 	 *
 	 * @param {string} [registrationTraceId] - Optional trace ID for this registration attempt.
 	 */
-	const requestCompanionCanonicalNonce = async (registrationTraceId) => {
+	const requestCompanionCanonicalNonce = async registrationTraceId => {
 		if (!authState.creds.me?.id) {
 			throw new boom_1.Boom('Not authenticated')
 		}
 		return sendPeerDataOperationMessage({
 			companionCanonicalUserNonceFetchRequest: registrationTraceId ? { registrationTraceId } : {},
-			peerDataOperationRequestType: index_js_1.proto.Message.PeerDataOperationRequestType.COMPANION_CANONICAL_USER_NONCE_FETCH
+			peerDataOperationRequestType:
+				index_js_1.proto.Message.PeerDataOperationRequestType.COMPANION_CANONICAL_USER_NONCE_FETCH
 		})
 	}
 	/**
@@ -725,7 +726,7 @@ const makeMessagesRecvSocket = config => {
 			const tcJid = await (0, tc_token_utils_1.resolveTcTokenJid)(normalizedJid, getLIDForPN)
 			const tcTokenData = await authState.keys.get('tctoken', [tcJid])
 			const senderTs = tcTokenData?.[tcJid]?.senderTimestamp
-			if (senderTs === null || senderTs === undefined || (0, tc_token_utils_1.isTcTokenExpired)(senderTs)) {
+			if (senderTs == null || (0, tc_token_utils_1.isTcTokenExpired)(senderTs)) {
 				return
 			}
 			logger.debug({ jid: normalizedJid, senderTimestamp: senderTs }, 'identity changed, re-issuing tctoken')
@@ -2249,8 +2250,20 @@ const makeMessagesRecvSocket = config => {
 	})
 	// additive: top-level call-signalling stanzas (some accounts send these instead of <call>)
 	for (const callTag of [
-		'offer', 'offer_notice', 'terminate', 'accept', 'reject', 'preaccept',
-		'transport', 'video', 'duration', 'mute_v2', 'lobby', 'heartbeat', 'relaylatency', 'link_query'
+		'offer',
+		'offer_notice',
+		'terminate',
+		'accept',
+		'reject',
+		'preaccept',
+		'transport',
+		'video',
+		'duration',
+		'mute_v2',
+		'lobby',
+		'heartbeat',
+		'relaylatency',
+		'link_query'
 	]) {
 		ws.on('CB:' + callTag, node => {
 			nodelogger(node)

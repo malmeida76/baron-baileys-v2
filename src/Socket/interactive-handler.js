@@ -394,11 +394,11 @@ class Baron {
 							joinLink: eventData.joinLink || '',
 							startTime:
 								typeof eventData.startTime === 'string'
-									? parseInt(eventData.startTime)
+									? parseInt(eventData.startTime, 10)
 									: eventData.startTime || Date.now(),
 							endTime:
 								typeof eventData.endTime === 'string'
-									? parseInt(eventData.endTime)
+									? parseInt(eventData.endTime, 10)
 									: eventData.endTime || Date.now() + 3600000,
 							extraGuestsAllowed: eventData.extraGuestsAllowed !== false
 						}

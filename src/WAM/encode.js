@@ -124,7 +124,7 @@ function serializeData(key, value, flag) {
 		buffer.write(value, offset, 'utf8')
 		return buffer
 	}
-	throw 'missing'
+	throw new Error(`WAM serializeData: unsupported value type ${typeof value} for key ${key}`)
 }
 function serializeHeader(buffer, offset, key, flag) {
 	if (key < 256) {

@@ -88,8 +88,8 @@ const makeInMemoryStore = config => {
 			'messaging-history.set',
 			({ chats: newChats, contacts: newContacts, messages: newMessages, isLatest, syncType }) => {
 				if (syncType === WAProto_1.proto.HistorySync.HistorySyncType.ON_DEMAND) {
-					return // FOR NOW,
-					//TODO: HANDLE
+					// ON_DEMAND syncs are chunk-based and need cursor tracking — skip for now
+					return
 				}
 				if (isLatest) {
 					chats.clear()
@@ -452,7 +452,7 @@ const makeInMemoryStore = config => {
 			if (!contact) {
 				return suki?.profilePictureUrl(jid)
 			}
-			if (typeof contact.imgUrl === 'undefined') {
+			if (contact.imgUrl === undefined) {
 				contact.imgUrl = await suki?.profilePictureUrl(jid)
 			}
 			return contact.imgUrl

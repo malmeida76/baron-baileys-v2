@@ -447,8 +447,6 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 							e2eType === 'msmsg'
 								? (0, meta_ai_msmsg_1.decodeDecryptedMsmsgMessage)(msgBuffer)
 								: index_js_1.proto.Message.decode(msgToDecode)
-						if (false) {
-						}
 						const outerMessageContextInfo = msg.messageContextInfo
 						msg = msg.deviceSentMessage?.message || msg
 						// deviceSentMessage.message may not carry messageContextInfo (e.g. messageSecret for @bot)
@@ -547,7 +545,7 @@ function decodeRichResponseMessage(richMsg) {
 			}
 		}
 		return texts.join('\n')
-	} catch (e) {
+	} catch {
 		return ''
 	}
 }

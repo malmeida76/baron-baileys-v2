@@ -1032,7 +1032,7 @@ const generateWAMessageContent = async (message, options) => {
 		m = { interactiveMessage }
 	} else if ('templateButtons' in message && !!message.templateButtons) {
 		const msg = {
-			hydratedButtons: message.hasOwnProperty('templateButtons') ? message.templateButtons : message.templateButtons
+			hydratedButtons: message.templateButtons
 		}
 		if ('text' in message) {
 			msg.hydratedContentText = message.text
@@ -1837,9 +1837,10 @@ const generateWAMessageContent = async (message, options) => {
 			...existing,
 			botThreadInfo: {
 				clientInfo: {
-					type: typeof bt.type === 'string'
-						? (threadTypeMap[bt.type.toLowerCase()] ?? threadTypeEnum.UNKNOWN)
-						: (bt.type ?? threadTypeEnum.UNKNOWN),
+					type:
+						typeof bt.type === 'string'
+							? (threadTypeMap[bt.type.toLowerCase()] ?? threadTypeEnum.UNKNOWN)
+							: (bt.type ?? threadTypeEnum.UNKNOWN),
 					sourceChatJid: bt.sourceChatJid || ''
 				}
 			}

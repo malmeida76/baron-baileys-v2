@@ -53,7 +53,7 @@ exports.getBinaryNodeChildBuffer = getBinaryNodeChildBuffer
 const getBinaryNodeChildString = (node, childTag) => {
 	const child = (0, exports.getBinaryNodeChild)(node, childTag)?.content
 	if (Buffer.isBuffer(child) || child instanceof Uint8Array) {
-		return Buffer.from(child).toString('utf-8')
+		return Buffer.from(child).toString('utf8')
 	} else if (typeof child === 'string') {
 		return child
 	}

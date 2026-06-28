@@ -679,7 +679,7 @@ const processMessage = async (
 				{
 					id: jid,
 					...update,
-					author: message.key.participant ?? undefined,
+					author: message.key.participant,
 					authorPn: message.key.participantAlt,
 					authorUsername: message.key.participantUsername
 				}

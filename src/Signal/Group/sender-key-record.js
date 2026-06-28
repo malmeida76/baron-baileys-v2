@@ -36,7 +36,7 @@ class SenderKeyRecord {
 		return this.senderKeyStates.map(state => state.getStructure())
 	}
 	static deserialize(data) {
-		const str = Buffer.from(data).toString('utf-8')
+		const str = Buffer.from(data).toString('utf8')
 		const parsed = JSON.parse(str, generics_1.BufferJSON.reviver)
 		return new SenderKeyRecord(parsed)
 	}

@@ -62,7 +62,7 @@ const makeInteropSocket = sock => {
 		return getBinaryNodeChildren(listNode, 'integrator').map(node => {
 			const featuresNode = getBinaryNodeChild(node, 'features')
 			return {
-				id: parseInt(node.attrs.id),
+				id: parseInt(node.attrs.id, 10),
 				name: node.attrs.name,
 				// "active" | "onboarding" | "removed"
 				status: node.attrs.status,
@@ -192,9 +192,9 @@ const makeInteropSocket = sock => {
 			if (errorNode) {
 				return {
 					externalId: userNode.attrs.external_id,
-					integratorId: parseInt(userNode.attrs.integrator_id),
+					integratorId: parseInt(userNode.attrs.integrator_id, 10),
 					error: {
-						code: parseInt(errorNode.attrs.code),
+						code: parseInt(errorNode.attrs.code, 10),
 						text: errorNode.attrs.text
 					}
 				}
@@ -203,7 +203,7 @@ const makeInteropSocket = sock => {
 				jid: userNode.attrs.jid,
 				externalId: userNode.attrs.external_id,
 				normalizedExternalId: userNode.attrs.normalized_external_id,
-				integratorId: parseInt(userNode.attrs.integrator_id)
+				integratorId: parseInt(userNode.attrs.integrator_id, 10)
 			}
 		})
 	}
@@ -234,7 +234,7 @@ const makeInteropSocket = sock => {
 			enabled: settingsNode.attrs?.enabled,
 			users: getBinaryNodeChildren(settingsNode, 'user').map(n => ({
 				externalId: n.attrs.external_id,
-				integratorId: parseInt(n.attrs.integrator_id),
+				integratorId: parseInt(n.attrs.integrator_id, 10),
 				jid: n.attrs.jid
 			}))
 		}
@@ -428,11 +428,7 @@ const makeInteropSocket = sock => {
 	 */
 	const queryInteropGroupInfo = async groupJid => {
 		const gid = groupJid.split('@')[0]
-		return mexQuery(
-			{ group_input: { gid } },
-			INTEROP_MEX_QUERY_IDS.QUERY_GROUP_INFO,
-			'xwa2_interop_group_query_by_id'
-		)
+		return mexQuery({ group_input: { gid } }, INTEROP_MEX_QUERY_IDS.QUERY_GROUP_INFO, 'xwa2_interop_group_query_by_id')
 	}
 
 	/**

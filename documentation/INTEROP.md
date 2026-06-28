@@ -8,13 +8,26 @@ Since 2024, large messaging platforms are required by the EU Digital Markets Act
 
 Currently available integrators:
 
-| ID | Name | Identifier Type | Status |
-|----|------|-----------------|--------|
-| 12 | BirdyChat | Email address | active |
-| 13 | Haiket | Phone number | active |
+| ID  | Name      | Identifier Type | Status |
+| --- | --------- | --------------- | ------ |
+| 12  | BirdyChat | Email address   | active |
+| 13  | Haiket    | Phone number    | active |
 
 Interop JIDs follow the format: `{integrator_id}-{user_id}@interop`  
 Example: `12-105012705411308@interop`
+
+---
+
+## Integrator Constants
+
+The socket exposes numeric ID constants for all known integrators:
+
+```js
+sock.INTEGRATOR_BIRDYCHAT // 12 — identifier type: email
+sock.INTEGRATOR_HAIKET // 13 — identifier type: phone number
+```
+
+Use these wherever a method takes an `integratorId` argument instead of hardcoding numbers.
 
 ---
 
@@ -23,15 +36,15 @@ Example: `12-105012705411308@interop`
 The socket initializes interop automatically on connection open (in parallel with other init queries). No manual call required.
 
 ```js
-const sock = makeWASocket({ auth, /* ... */ })
+const sock = makeWASocket({ auth /* ... */ })
 
 sock.ev.on('connection.update', ({ connection }) => {
-    if (connection === 'open') {
-        // Interop is already initialized:
-        // 1. Integrators fetched
-        // 2. TOS accepted (result 105 + 160)
-        // 3. Opt-in sent
-    }
+	if (connection === 'open') {
+		// Interop is already initialized:
+		// 1. Integrators fetched
+		// 2. TOS accepted (result 105 + 160)
+		// 3. Opt-in sent
+	}
 })
 ```
 
@@ -64,7 +77,7 @@ const integrators = await sock.fetchIntegrators()
 // ]
 
 console.log(sock.INTEGRATOR_BIRDYCHAT) // 12
-console.log(sock.INTEGRATOR_HAIKET)    // 13
+console.log(sock.INTEGRATOR_HAIKET) // 13
 ```
 
 ---
@@ -76,24 +89,24 @@ console.log(sock.INTEGRATOR_HAIKET)    // 13
 ```js
 // Look up a BirdyChat user by email
 const result = await sock.resolveInteropUser(
-    'user@example.com',
-    sock.INTEGRATOR_BIRDYCHAT // 12
+	'user@example.com',
+	sock.INTEGRATOR_BIRDYCHAT // 12
 )
 
 if (result.error) {
-    console.log('Not found:', result.error.code, result.error.text)
-    // { code: 404, text: 'item-not-found' }
+	console.log('Not found:', result.error.code, result.error.text)
+	// { code: 404, text: 'item-not-found' }
 } else {
-    console.log('JID:', result.jid)
-    // '12-105012705411308@interop'
-    console.log('External ID:', result.externalId)
-    console.log('Normalized ID:', result.normalizedExternalId)
+	console.log('JID:', result.jid)
+	// '12-105012705411308@interop'
+	console.log('External ID:', result.externalId)
+	console.log('Normalized ID:', result.normalizedExternalId)
 }
 
 // Look up a Haiket user by phone number
 const result2 = await sock.resolveInteropUser(
-    '19146088152',          // phone number without +
-    sock.INTEGRATOR_HAIKET  // 13
+	'19146088152', // phone number without +
+	sock.INTEGRATOR_HAIKET // 13
 )
 ```
 
@@ -101,17 +114,17 @@ const result2 = await sock.resolveInteropUser(
 
 ```js
 const results = await sock.resolveInteropUsers([
-    { externalId: 'alice@example.com', integratorId: 12 },
-    { externalId: 'bob@example.com',   integratorId: 12 },
-    { externalId: '19146088152',       integratorId: 13 },
+	{ externalId: 'alice@example.com', integratorId: 12 },
+	{ externalId: 'bob@example.com', integratorId: 12 },
+	{ externalId: '19146088152', integratorId: 13 }
 ])
 
 for (const r of results) {
-    if (r.error) {
-        console.log(`${r.externalId} → not found`)
-    } else {
-        console.log(`${r.externalId} → ${r.jid}`)
-    }
+	if (r.error) {
+		console.log(`${r.externalId} → not found`)
+	} else {
+		console.log(`${r.externalId} → ${r.jid}`)
+	}
 }
 ```
 
@@ -129,20 +142,30 @@ await sock.sendMessage(interopJid, { text: 'Hello from WhatsApp!' })
 
 // Send image
 await sock.sendMessage(interopJid, {
-    image: { url: './photo.jpg' },
-    caption: 'Check this out!'
+	image: { url: './photo.jpg' },
+	caption: 'Check this out!'
 })
 
 // Send GIF
 await sock.sendMessage(interopJid, {
-    video: { url: './animation.gif' },
-    gifPlayback: true
+	video: { url: './animation.gif' },
+	gifPlayback: true
 })
 
-// After the first outgoing message: mark as trusted contact
-// (WA does this automatically after the first send)
+// Baileys calls trustInteropContact automatically after the first outgoing message.
+// You only need to call it manually if you bypass sendMessage.
 await sock.trustInteropContact(interopJid)
 ```
+
+### trustInteropContact
+
+```js
+await sock.trustInteropContact(interopJid)
+```
+
+Sets the `trusted_contact` privacy token for the given interop JID. WhatsApp uses this to decide whether to show a "message request" prompt on the other side.
+
+Baileys calls this automatically after `sendMessage` delivers its first message to an interop JID. You only need to call it manually if you're sending messages through a lower-level path.
 
 ---
 
@@ -152,18 +175,18 @@ Incoming interop messages arrive via the normal `messages.upsert` event:
 
 ```js
 sock.ev.on('messages.upsert', ({ messages, type }) => {
-    for (const msg of messages) {
-        const jid = msg.key.remoteJid
+	for (const msg of messages) {
+		const jid = msg.key.remoteJid
 
-        if (jid.endsWith('@interop')) {
-            // Extract integrator ID and user ID
-            const [integratorId, userId] = jid.replace('@interop', '').split('-')
+		if (jid.endsWith('@interop')) {
+			// Extract integrator ID and user ID
+			const [integratorId, userId] = jid.replace('@interop', '').split('-')
 
-            console.log(`Interop message from integrator ${integratorId}:`)
-            console.log('User ID:', userId)
-            console.log('Text:', msg.message?.conversation)
-        }
-    }
+			console.log(`Interop message from integrator ${integratorId}:`)
+			console.log('User ID:', userId)
+			console.log('Text:', msg.message?.conversation)
+		}
+	}
 })
 ```
 
@@ -199,11 +222,11 @@ const settings = await sock.getReachabilitySettings()
 
 // Enable reachability for specific users (subscribe to presence)
 await sock.setReachabilitySettings(
-    [
-        { externalId: 'user@example.com', integratorId: 12 },
-        { externalId: '19146088152',      integratorId: 13 }
-    ],
-    'true'  // 'true' | 'false'
+	[
+		{ externalId: 'user@example.com', integratorId: 12 },
+		{ externalId: '19146088152', integratorId: 13 }
+	],
+	'true' // 'true' | 'false'
 )
 ```
 
@@ -250,7 +273,7 @@ await sock.optInIntegrators([12]) // BirdyChat only
 
 // Opt out
 await sock.optOutIntegrators([13]) // disable Haiket
-await sock.optOutIntegrators()     // disable all
+await sock.optOutIntegrators() // disable all
 ```
 
 ---
@@ -260,7 +283,7 @@ await sock.optOutIntegrators()     // disable all
 ```js
 const { isInteropUser } = require('./src/WABinary')
 
-isInteropUser('12-105012705411308@interop')  // true
+isInteropUser('12-105012705411308@interop') // true
 isInteropUser('491234567890@s.whatsapp.net') // false
 ```
 
@@ -274,42 +297,39 @@ const { useMultiFileAuthState } = require('./src')
 const { isInteropUser } = require('./src/WABinary')
 
 async function main() {
-    const { state, saveCreds } = await useMultiFileAuthState('./auth')
-    const sock = makeWASocket({ auth: state })
+	const { state, saveCreds } = await useMultiFileAuthState('./auth')
+	const sock = makeWASocket({ auth: state })
 
-    sock.ev.on('creds.update', saveCreds)
+	sock.ev.on('creds.update', saveCreds)
 
-    sock.ev.on('connection.update', async ({ connection }) => {
-        if (connection !== 'open') return
+	sock.ev.on('connection.update', async ({ connection }) => {
+		if (connection !== 'open') return
 
-        // Look up a BirdyChat user and send a message
-        const user = await sock.resolveInteropUser(
-            'friend@birdychat.app',
-            sock.INTEGRATOR_BIRDYCHAT
-        )
+		// Look up a BirdyChat user and send a message
+		const user = await sock.resolveInteropUser('friend@birdychat.app', sock.INTEGRATOR_BIRDYCHAT)
 
-        if (user.error) {
-            console.log('User not found on BirdyChat')
-            return
-        }
+		if (user.error) {
+			console.log('User not found on BirdyChat')
+			return
+		}
 
-        console.log('Found:', user.jid)
+		console.log('Found:', user.jid)
 
-        await sock.sendMessage(user.jid, {
-            text: 'Hey! This is a message from WhatsApp via DMA Interop!'
-        })
+		await sock.sendMessage(user.jid, {
+			text: 'Hey! This is a message from WhatsApp via DMA Interop!'
+		})
 
-        // Mark as trusted after first send
-        await sock.trustInteropContact(user.jid)
-    })
+		// Mark as trusted after first send
+		await sock.trustInteropContact(user.jid)
+	})
 
-    sock.ev.on('messages.upsert', ({ messages }) => {
-        for (const msg of messages) {
-            if (!msg.key.fromMe && isInteropUser(msg.key.remoteJid)) {
-                console.log('Reply received:', msg.message?.conversation)
-            }
-        }
-    })
+	sock.ev.on('messages.upsert', ({ messages }) => {
+		for (const msg of messages) {
+			if (!msg.key.fromMe && isInteropUser(msg.key.remoteJid)) {
+				console.log('Reply received:', msg.message?.conversation)
+			}
+		}
+	})
 }
 
 main()
@@ -323,17 +343,11 @@ Interop groups allow WhatsApp users to create groups that include third-party me
 
 ```js
 // Create an interop group with participants
-const group = await sock.createInteropGroup([
-    '12-105012705411308@interop',
-    '13-19146088152@interop'
-])
+const group = await sock.createInteropGroup(['12-105012705411308@interop', '13-19146088152@interop'])
 // Returns: { gid, creationTime, creator, participants }
 
 // Add participants to an existing interop group
-await sock.addParticipantsToInteropGroup(
-    '120363000000000000@g.us',
-    ['12-105012705411308@interop']
-)
+await sock.addParticipantsToInteropGroup('120363000000000000@g.us', ['12-105012705411308@interop'])
 
 // Query info about an interop group
 const info = await sock.queryInteropGroupInfo('120363000000000000@g.us')
@@ -350,8 +364,8 @@ Control who can add you to interop groups:
 ```js
 // Check if a specific interop user can add you to groups
 const canAdd = await sock.getInteropGroupAddPrivacy(
-    '12-105012705411308@interop',
-    12 // integrator ID
+	'12-105012705411308@interop',
+	12 // integrator ID
 )
 // Returns true/false
 
@@ -362,11 +376,11 @@ await sock.updateInteropPrivacySetting('GROUPADD', 'CONTACTS')
 
 // Update GROUPADD with a specific allowed contact list
 await sock.updateInteropPrivacySettingWithContactList(
-    'GROUPADD',
-    'CONTACTS',
-    ['12-105012705411308@interop'],
-    'contact_list_type_string',
-    'dhash_or_none'
+	'GROUPADD',
+	'CONTACTS',
+	['12-105012705411308@interop'],
+	'contact_list_type_string',
+	'dhash_or_none'
 )
 ```
 
@@ -423,8 +437,8 @@ server         → always "interop"
 
 ### Known limits (from APK sources)
 
-| Operation | Limit |
-|-----------|-------|
-| Batch lookup | max 256 users per request |
-| Integrator ID range | 1–999 |
-| Reachability settings items | max 999 |
+| Operation                   | Limit                     |
+| --------------------------- | ------------------------- |
+| Batch lookup                | max 256 users per request |
+| Integrator ID range         | 1–999                     |
+| Reachability settings items | max 999                   |

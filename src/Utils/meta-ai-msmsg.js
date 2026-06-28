@@ -1,6 +1,6 @@
 'use strict'
 
-const rb = require('whatsapp-rust-bridge')
+const rb = require('whatsapp-rust-bridge-baron')
 const { proto } = require('../../WAProto')
 
 const BOT_MESSAGE_INFO = 'Bot Message'

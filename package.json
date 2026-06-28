@@ -37,7 +37,6 @@
     "preinstall": "node ./engine-requirements.js"
   },
   "dependencies": {
-    "whatsapp-rust-bridge": "github:7ucg/whatsapp-rust-bridge",
     "@adiwajshing/keyed-db": "^0.2.4",
     "@cacheable/node-cache": "^3.0.1",
     "@hapi/boom": "^10.0.1",
@@ -49,6 +48,7 @@
     "p-queue": "^9.3.0",
     "pino": "^10.3.1",
     "protobufjs": "^7.6.1",
+    "whatsapp-rust-bridge-baron": "github:7ucg/whatsapp-rust-bridge",
     "ws": "^8.21.0"
   },
   "devDependencies": {

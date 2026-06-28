@@ -141,16 +141,18 @@ Each stanza has one or more `<update op_name="...">` children whose content is J
 
 These are pushed when an admin changes a group property via the community settings UI.
 
-| Op name                                       | Event emitted   | Payload field changed |
-| --------------------------------------------- | --------------- | --------------------- |
-| `NotificationGroupMemberLinkPropertyUpdate`   | `groups.update` | `memberAddMode`       |
-| `NotificationGroupLimitSharingPropertyUpdate` | `groups.update` | `limitSharing`        |
+| Op name                                                      | Event emitted   | Payload field changed    |
+| ------------------------------------------------------------ | --------------- | ------------------------ |
+| `NotificationGroupMemberLinkPropertyUpdate`                  | `groups.update` | `memberAddMode`          |
+| `NotificationGroupLimitSharingPropertyUpdate`                | `groups.update` | `limitSharing`           |
+| `NotificationGroupMemberShareGroupHistoryModePropertyUpdate` | `groups.update` | `memberShareHistoryMode` |
 
 ```js
 sock.ev.on('groups.update', updates => {
 	for (const u of updates) {
 		if (u.memberAddMode) console.log(u.id, 'link mode ->', u.memberAddMode)
 		if (u.limitSharing !== undefined) console.log(u.id, 'limit sharing ->', u.limitSharing)
+		if (u.memberShareHistoryMode) console.log(u.id, 'history mode ->', u.memberShareHistoryMode)
 	}
 })
 ```

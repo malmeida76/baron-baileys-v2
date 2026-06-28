@@ -280,6 +280,19 @@ const makeMessagesRecvSocket = config => {
 					}
 					break
 				}
+				case 'NotificationGroupMemberShareGroupHistoryModePropertyUpdate': {
+					// d.xwa2_notify_group_on_prop_change: { id, properties: { member_share_group_history_mode } }
+					const upd = d.xwa2_notify_group_on_prop_change
+					if (upd?.id && upd.properties?.member_share_group_history_mode !== undefined) {
+						ev.emit('groups.update', [
+							{
+								id: upd.id,
+								memberShareHistoryMode: upd.properties.member_share_group_history_mode
+							}
+						])
+					}
+					break
+				}
 				default:
 					logger.debug({ opName, from: node.attrs.from }, 'unhandled mex op')
 			}

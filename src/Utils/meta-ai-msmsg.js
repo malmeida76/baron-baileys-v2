@@ -5,7 +5,6 @@ const { proto } = require('../../WAProto')
 
 const BOT_MESSAGE_INFO = 'Bot Message'
 const KEY_LENGTH = 32
-const MSG_ID_HEX_RE = /^[0-9A-Fa-f]{32}$/
 
 const unpadRandomMax16 = value => {
 	const bytes = new Uint8Array(value)
@@ -25,18 +24,11 @@ const toBuffer = value => {
 	return Buffer.from(value)
 }
 
+// Strips device suffix from LID JIDs: "user:device@lid" → "user@lid".
+// jidEncode includes ":0" even for device=0 (user/non-AD form), so normalize both meId and meLid.
 const normalizeLidJid = jid => {
 	if (!jid || !jid.endsWith('@lid') || !jid.includes(':')) return jid
 	return `${jid.split(':')[0]}@lid`
-}
-
-// Returns [ascii] normally, or [ascii, hex-decoded] when msgId is a 32-char hex string.
-// WA can encode msgId as the hex-encoded form of its binary representation.
-const msgIdForms = msgId => {
-	const ascii = Buffer.from(msgId)
-	if (!MSG_ID_HEX_RE.test(msgId)) return [ascii]
-	const binary = Buffer.from(msgId, 'hex')
-	return binary.equals(ascii) ? [ascii] : [ascii, binary]
 }
 
 // Ordered msgId candidates per the Rust BotMessageContext:
@@ -54,11 +46,12 @@ const selectMsgIdCandidates = messageKey => {
 	return result
 }
 
-// Ordered target_sender_user_jid candidates: meId (already non-AD form) then normalized meLid.
+// Ordered target_sender_user_jid candidates per Rust spec (non-AD user JID = no device suffix).
+// jidEncode produces "user:0@lid" for device=0 LID JIDs, so normalize both meId and meLid.
 const selectTargetJidCandidates = messageKey => {
 	const seen = new Set()
 	const result = []
-	for (const jid of [messageKey?.meId, normalizeLidJid(messageKey?.meLid)]) {
+	for (const jid of [normalizeLidJid(messageKey?.meId), normalizeLidJid(messageKey?.meLid)]) {
 		const s = jid ? String(jid) : ''
 		if (s && !seen.has(s)) {
 			seen.add(s)
@@ -115,16 +108,16 @@ const decryptMsmsgBotMessage = async (messageSecret, messageKey, msMsg) => {
 
 	let lastError
 	for (const msgId of msgIdCandidates) {
-		for (const idBuf of msgIdForms(msgId)) {
-			for (const targetJid of targetJidCandidates) {
-				const info = Buffer.concat([idBuf, Buffer.from(targetJid), botJidBuf])
-				const key = Buffer.from(rb.hkdf(baseKey, KEY_LENGTH, { info }))
-				const aad = Buffer.concat([idBuf, Buffer.from([0x00]), botJidBuf])
-				try {
-					return Buffer.from(rb.aesDecryptGCM(payload, key, iv, aad))
-				} catch (e) {
-					lastError = e
-				}
+		// msg_id is always passed as ASCII bytes per Rust spec (msg_id.as_bytes())
+		const idBuf = Buffer.from(msgId)
+		for (const targetJid of targetJidCandidates) {
+			const info = Buffer.concat([idBuf, Buffer.from(targetJid), botJidBuf])
+			const key = Buffer.from(rb.hkdf(baseKey, KEY_LENGTH, { info }))
+			const aad = Buffer.concat([idBuf, Buffer.from([0x00]), botJidBuf])
+			try {
+				return Buffer.from(rb.aesDecryptGCM(payload, key, iv, aad))
+			} catch (e) {
+				lastError = e
 			}
 		}
 	}

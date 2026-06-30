@@ -1,6 +1,6 @@
 # Managed Accounts, Payments Passkey & IPLS (`src/Socket/managed-account.js`)
 
-This module covers 27 MEX operations for parental/family account management, payments passkey (WebAuthn for payments), UPI onboarding (India), and IPLS (Identity-Preserving Linked Spaces).
+Covers MEX operations for parental controls, payments passkey (WebAuthn), UPI onboarding, and IPLS.
 
 ## Managed Accounts (Parental Controls / Family)
 

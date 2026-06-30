@@ -7,7 +7,6 @@ fixtures
 .claude
 Haiket.proto
 /assets
-*.apk
 /WhatsApp_2.26.20.8
 .remember
 /Chrome Wa Web
@@ -15,3 +14,4 @@ Haiket.proto
 bot_message.rs
 /coverage
 scratch_test.js
+*.apk

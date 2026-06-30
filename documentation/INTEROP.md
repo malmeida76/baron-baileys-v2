@@ -2,6 +2,27 @@
 
 Baron-Baileys-v2 supports the WhatsApp Interoperability Protocol (DMA-Interop), which allows users of third-party messaging services to communicate with WhatsApp accounts.
 
+## Query IDs (WA 2.26.26.4 — from APK assets)
+
+MEX operations use numeric `query_id` values. The IDs below come from `whatsapp-android-mex_client_persist_ids.json` in the WA 2.26.26.4 APK.
+
+```js
+const INTEROP_MEX_QUERY_IDS = {
+    CREATE_GROUP:                      '25726817620301611',  // GroupsCreateInteropGroup
+    LEAVE_GROUP:                       '25346167795013271',  // LeaveInteropGroup
+    ADD_PARTICIPANTS:                  '25732168276369451',  // AddParticipantsToInteropGroup
+    QUERY_GROUP_INFO:                  '32734144032867938',  // QueryInteropGroupInfo
+    PRIVACY_SETTINGS_QUERY:            '24849123668112654',  // InteropPrivacySettingsQuery
+    PRIVACY_SETTINGS_UPDATE:           '25421856497452763',  // InteropPrivacySettingsUpdate
+    PRIVACY_SETTINGS_WITH_CONTACT_LIST:'24913399124998598',  // InteropPrivacySettingWithContactListUpdate
+}
+```
+
+**Source:** `decoded_2.26.26.4/assets/whatsapp-android-mex_client_persist_ids.json`  
+All 7 IDs were off by 1–2 from the previous values — corrected 2026-06-30.
+
+---
+
 ## What is Interop?
 
 Since 2024, large messaging platforms are required by the EU Digital Markets Act (DMA) to offer interoperability. WhatsApp implements this via the `w:interop` IQ namespace protocol.
@@ -434,6 +455,16 @@ user_id        → platform-specific user ID
 device         → device index (optional, usually 0)
 server         → always "interop"
 ```
+
+### Source files
+
+| File | Role |
+| --- | --- |
+| `decoded_2.26.26.4/assets/whatsapp-android-mex_client_persist_ids.json` | Authoritative `doc_id` for every MEX operation |
+| `jadx_2.26.26.4/sources/X/C80913Xf.java` | Interop group opcodes (create=15, leave=28) |
+| `jadx_2.26.26.4/sources/X/C3Wt.java` | Add participants (opcode 9), query group info (opcode 10) |
+| `jadx_2.26.26.4/sources/X/C24385Ak0.java` | InteropPrivacySettingsUpdate |
+| `jadx_2.26.26.4/sources/X/C24388Ak8.java` | InteropPrivacySettingWithContactListUpdate |
 
 ### Known limits (from APK sources)
 

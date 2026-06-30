@@ -5,14 +5,19 @@ exports.makeInteropSocket = void 0
 const { getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } = require('../WABinary')
 const { executeWMexQuery } = require('./mex')
 
+/**
+ * w:mex query IDs for interop group and privacy operations.
+ *
+ * Source: whatsapp-android-mex_client_persist_ids.json (WA 2.26.26.4 APK assets)
+ */
 const INTEROP_MEX_QUERY_IDS = {
-	CREATE_GROUP: '25726817620301612', // GroupsCreateInteropGroup
-	LEAVE_GROUP: '25346167795013270', // LeaveInteropGroup
-	ADD_PARTICIPANTS: '25732168276369452', // AddParticipantsToInteropGroup
-	QUERY_GROUP_INFO: '32734144032867936', // QueryInteropGroupInfo
-	PRIVACY_SETTINGS_QUERY: '24849123668112656', // InteropPrivacySettingsQuery
-	PRIVACY_SETTINGS_UPDATE: '25421856497452764', // InteropPrivacySettingsUpdate
-	PRIVACY_SETTINGS_WITH_CONTACT_LIST: '24913399124998600' // InteropPrivacySettingWithContactListUpdate
+	CREATE_GROUP: '25726817620301611', // GroupsCreateInteropGroup
+	LEAVE_GROUP: '25346167795013271', // LeaveInteropGroup
+	ADD_PARTICIPANTS: '25732168276369451', // AddParticipantsToInteropGroup
+	QUERY_GROUP_INFO: '32734144032867938', // QueryInteropGroupInfo
+	PRIVACY_SETTINGS_QUERY: '24849123668112654', // InteropPrivacySettingsQuery
+	PRIVACY_SETTINGS_UPDATE: '25421856497452763', // InteropPrivacySettingsUpdate
+	PRIVACY_SETTINGS_WITH_CONTACT_LIST: '24913399124998598' // InteropPrivacySettingWithContactListUpdate
 }
 
 /**

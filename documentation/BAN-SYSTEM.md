@@ -1,6 +1,6 @@
 # WhatsApp Ban & Enforcement System
 
-This document explains how WhatsApp detects and handles account bans and restrictions, extracted from the WhatsApp APK source code. Knowing how this works helps you write bots that avoid triggering enforcement and handle enforcement events correctly.
+How WhatsApp detects and enforces bans, extracted from APK sources. Use this to avoid triggering restrictions and to handle enforcement events.
 
 ---
 

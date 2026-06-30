@@ -1,6 +1,6 @@
 # WhatsApp Protocol Reference (from APK source)
 
-This document catalogues all WhatsApp IQ/stanza namespaces and protocols found in WhatsApp 2.26.20.8 APK sources that are relevant for understanding the full protocol surface. Protocols already documented elsewhere are cross-referenced but not repeated.
+WhatsApp IQ/stanza namespaces and protocols from WhatsApp 2.26.20.8 APK sources. Protocols documented elsewhere are cross-referenced, not repeated.
 
 ---
 

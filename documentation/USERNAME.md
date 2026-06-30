@@ -1,6 +1,6 @@
 # WhatsApp Username Support
 
-Baron-Baileys-v2 implements the full WhatsApp username protocol, reverse-engineered from WhatsApp 2.26.17.2 (Java decompilation of `C1568872p.java`, `C164057Wg.java`, `MexUsernamePinProtocolApi.java`).
+Baron-Baileys-v2 implements the full WhatsApp username protocol, reverse-engineered from WhatsApp 2.26.17.2 (Java decompilation of `C1568872p.java`, `C164057Wg.java`, `MexUsernamePinProtocolApi.java`) and updated with live traffic captured from WA 2.26.26.4 using `wa-logger-2.26.26.4.js`.
 
 ## How Usernames Work in WhatsApp
 
@@ -11,34 +11,47 @@ WhatsApp usernames (`@username`) are optional profile identifiers. They allow us
 
 ---
 
-## Setup: Query IDs
+## Query IDs (WA 2.26.26.4 — live-captured)
 
-Username operations require numeric `query_id` values that WhatsApp's Pando/MEX infrastructure assigns to each GraphQL operation. These IDs must be obtained by capturing a real WA session.
+Username operations use numeric `query_id` values embedded in MEX IQ stanzas. The IDs below were captured from a live WA 2.26.26.4 session using `wa-logger-2.26.26.4.js` while going through Settings → Profile → Username.
 
-**To get the IDs:**
-1. Run the `wa-logger-2.26.17.2.js` Frida script on a real device
-2. Open WhatsApp → Settings → Profile → Username
-3. Type a username and tap "Check" / "Confirm"
-4. In the log output, find `[SENT]` IQ stanzas with `xmlns="w:mex"` and note the `query_id` attribute
+```js
+const USERNAME_QUERY_IDS = {
+    CHECK:   '26124072630599518',  // UsernameCheck — availability + suggestions
+    RESERVE: '27108705368767936',  // UsernameReserve — confirm/set username
+    GET:     '32618050064506055',  // GetMyUsername — fetch own username (empty variables)
+    PIN:     '25529696019976770',  // UsernamePinSet/Delete/Verify
+    LOOKUP:  '25975613018777537',  // User lookup by JID (interactive search)
+    PROFILE: '25741205615468935',  // User profile fetch by JID with last_update_time
+}
+```
 
-**Example log output to look for:**
+**To re-capture for a new WA version:**
+
+1. Run `wa-logger-2.26.26.4.js` on a rooted device with Frida
+2. Open WA → Settings → Profile → Username
+3. Type a username and check / confirm it
+4. Search the log for `xmlns="w:mex"` — the `query_id` attribute and JSON body are both visible
+
+---
+
+## Username Flow (two-step with shared session_id)
+
+Step 1 — availability check:
 ```xml
-<iq type="get" xmlns="w:mex" to="s.whatsapp.net">
-  <query query_id="XXXXXXXXXXXXXXXXX">
-    {"variables":{"username":"testname","include_suggestions":true}}
-  </query>
+<iq to="s.whatsapp.net" xmlns="w:mex" type="get" id="032">
+  <query query_id="26124072630599518">{"queryId":"26124072630599518","variables":{"include_suggestions":false,"session_id":"aa2b42c1-f505-4e0b-9afd-ba4068136369","source":"USER_INPUT","username":"myname"}}</query>
 </iq>
 ```
 
-**Fill in the IDs in [src/Socket/username.js](./src/Socket/username.js):**
-```js
-const USERNAME_QUERY_IDS = {
-    CHECK:   'XXXXXXXXXXXXXXXXX',  // UsernameCheck
-    SET:     'XXXXXXXXXXXXXXXXX',  // UsernameSet
-    GET:     'XXXXXXXXXXXXXXXXX',  // UsernameGet
-    PIN_SET: 'XXXXXXXXXXXXXXXXX'   // UsernamePinSet
-}
+Step 2 — reserve/set (same `session_id`):
+```xml
+<iq to="s.whatsapp.net" xmlns="w:mex" type="get" id="033">
+  <query query_id="27108705368767936">{"queryId":"27108705368767936","variables":{"reserved":true,"session_id":"aa2b42c1-f505-4e0b-9afd-ba4068136369","source":"USER_INPUT","username":"myname"}}</query>
+</iq>
 ```
+
+The `session_id` (UUID v4) is generated fresh per username attempt and links both steps. `reserved: true` is sent by the client in the reserve step.
 
 ---
 
@@ -109,7 +122,7 @@ await sock.setUsername('myusername', {
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `source` | string | `'USER_INPUT'` | Origin: `'USER_INPUT'`, `'SUGGESTION'`, `'FB'`, `'IG'` |
-| `sessionId` | string | — | Optional session tracking ID |
+| `sessionId` | string | auto-generated UUID | Links check + reserve steps |
 | `pin` | string | — | PIN to protect the username |
 
 **Recommended flow (check before set):**
@@ -168,6 +181,12 @@ await sock.setUsernamePin('1234')
 
 // Delete the PIN (pass null)
 await sock.setUsernamePin(null)
+```
+
+PIN stanza (live-captured):
+
+```xml
+<query query_id="25529696019976770">{"queryId":"25529696019976770","variables":{"pin":"7601"}}</query>
 ```
 
 ---
@@ -299,15 +318,17 @@ main()
 
 ## Protocol Details
 
-### w:mex stanza shape (all username management ops)
+### w:mex stanza shape
 
 ```xml
-<iq type="get" xmlns="w:mex" to="s.whatsapp.net" id="...">
+<iq to="s.whatsapp.net" xmlns="w:mex" type="get" id="...">
   <query query_id="XXXXXXXXXXXXXXXXX">
-    {"variables":{"username":"myname","include_suggestions":true}}
+    {"queryId":"XXXXXXXXXXXXXXXXX","variables":{...}}
   </query>
 </iq>
 ```
+
+All MEX operations (queries and mutations) use `type="get"` on the IQ wrapper. The `query_id` in the `<query>` attribute and in the JSON body must match.
 
 ### UsernameCheck response
 
@@ -324,15 +345,35 @@ main()
 }
 ```
 
-### UsernameSet variables
+### UsernameCheck variables (`query_id: 26124072630599518`)
 
 | Variable | Type | Notes |
 |---|---|---|
-| `username` | string \| null | `null` = delete |
-| `reserved` | boolean | Server-controlled, always `false` from client |
+| `username` | string | Username to check |
+| `include_suggestions` | boolean | Whether to return suggestions if taken |
+| `session_id` | string | UUID v4, same value must be used in reserve step |
 | `source` | string | `USER_INPUT`, `SUGGESTION`, `FB`, `IG` |
-| `session_id` | string? | Optional tracking ID |
-| `pin` | string? | Optional PIN |
+
+### UsernameReserve variables (`query_id: 27108705368767936`)
+
+| Variable | Type | Notes |
+|---|---|---|
+| `username` | string | Username to reserve |
+| `reserved` | boolean | Always `true` from client |
+| `session_id` | string | Same UUID as the check step |
+| `source` | string | `USER_INPUT`, `SUGGESTION`, `FB`, `IG` |
+
+### GetMyUsername (`query_id: 32618050064506055`)
+
+Empty variables `{}`. Used both as polling heartbeat and to fetch current username.
+
+### UsernamePinSet variables (`query_id: 25529696019976770`)
+
+| Variable | Type   | Notes                |
+|----------|--------|----------------------|
+| `pin`    | string | 4-digit PIN to set   |
+
+Pass empty variables `{}` to delete the PIN (live-captured: `{"queryId":"25529696019976770","variables":{}}`).
 
 ### USync username lookup (findUserByUsername)
 
@@ -351,7 +392,11 @@ main()
 </iq>
 ```
 
-### Source files (WhatsApp 2.26.17.2 APK)
+---
+
+## Source Files
+
+### WhatsApp 2.26.17.2 APK (decompilation)
 
 | File | Role |
 |---|---|
@@ -363,3 +408,9 @@ main()
 | `com/.../MexUsernamePinProtocolApi.java` | PIN set/delete — operation `UsernamePinSet` |
 | `X/EnumC141106Vn.java` | Check result enum: SUCCESS, INVALID |
 | `X/EnumC141056Vi.java` | Rejection reasons enum |
+
+### WA 2.26.26.4 — live traffic capture
+
+Captured with `tools/wa-logger-2.26.26.4.js` (Frida 17.x, ONEPLUS A6003).
+
+All query_id values above confirmed from real device session on 2026-06-30.

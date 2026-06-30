@@ -4,6 +4,16 @@ A high-performance WhatsApp Web library built on [Baileys](https://github.com/Wh
 
 ---
 
+## Updated — 2026-06-30
+
+| Area                       | What changed                                                                                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Username** (`@username`) | All 6 MEX query IDs corrected from WA 2.26.26.4 APK assets + live Frida capture. Two-step check→reserve flow with shared `session_id` documented. `reserved: true` fixed. |
+| **Interop**                | All 7 MEX query IDs corrected from WA 2.26.26.4 APK assets (all were off by 1–2). Source file table added to INTEROP.md.                                                  |
+| **Docs**                   | INTEROP.md and USERNAME.md rewritten with real stanza examples and verified IDs.                                                                                          |
+
+---
+
 ## Index
 
 - [What's Different](#whats-different)

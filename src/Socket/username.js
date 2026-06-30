@@ -9,20 +9,15 @@ const { makeNewsletterSocket } = require('./newsletter')
 /**
  * w:mex query IDs for username operations.
  *
- * These numeric IDs are assigned by WhatsApp's Pando/MEX infrastructure.
- * They can be obtained by capturing a real WA session that performs these
- * operations and inspecting the query_id field in the <query> IQ node.
- *
- * Source: Java decompilation of WhatsApp 2.26.17.2 (C1568872p.java)
- * Operations confirmed: UsernameCheck, UsernameSet, UsernameGet, UsernamePinSet
- * Data path confirmed:  xwa2_username_check (C164057Wg.java:81)
+ * Source: whatsapp-android-mex_client_persist_ids.json (WA 2.26.26.4 APK assets)
+ * Cross-checked: live Frida capture on real device (wa-logger-2.26.26.4.js, 2026-06-30)
  */
 const USERNAME_QUERY_IDS = {
-	CHECK: '26124072630599520', // UsernameCheck
-	CHECK_MULTI: '27134626522840290', // UsernameCheckMulti
+	CHECK: '26124072630599518', // UsernameCheck
+	CHECK_MULTI: '27134626522840286', // UsernameCheckMulti
 	SET: '27108705368767936', // UsernameSet
-	GET: '32618050064506056', // UsernameGet
-	GET_RECOMMENDATIONS: '26077456248616956', // UsernameGetRecommendationsQuery
+	GET: '32618050064506055', // UsernameGet
+	GET_RECOMMENDATIONS: '26077456248616957', // UsernameGetRecommendationsQuery
 	PIN_SET: '25529696019976770' // UsernamePinSet
 }
 
@@ -65,21 +60,27 @@ const makeUsernameSocket = config => {
 	 *   data.xwa2_username_check.rejection_reasons
 	 *   data.xwa2_username_check.suggestions_eligible
 	 */
-	const checkUsername = async (username, includeSuggestions = true) => {
-		if (!USERNAME_QUERY_IDS.CHECK) {
-			throw new Error('Username CHECK query_id not configured — capture a live WA session to obtain it')
-		}
+	const checkUsername = async (username, includeSuggestions = true, sessionId) => {
+		// session_id ties this check to the subsequent set step — caller can pass one in
+		// so both use the same UUID (confirmed from live WA 2.26.26.4 capture).
+		const session_id = sessionId || require('crypto').randomUUID()
 		const data = await mexQuery(
-			{ username, include_suggestions: includeSuggestions },
+			{
+				username,
+				include_suggestions: includeSuggestions,
+				session_id,
+				source: USERNAME_SOURCE.USER_INPUT
+			},
 			USERNAME_QUERY_IDS.CHECK,
 			'xwa2_username_check'
 		)
 		if (data?.result === USERNAME_CHECK_RESULT.SUCCESS) {
-			return { available: true, username }
+			return { available: true, username, session_id }
 		}
 		return {
 			available: false,
 			username,
+			session_id,
 			suggestions: data?.suggestions ?? [],
 			rejectionReasons: data?.rejection_reasons ?? [],
 			suggestionsEligible: data?.suggestions_eligible ?? true
@@ -99,15 +100,15 @@ const makeUsernameSocket = config => {
 	 *   username, reserved (bool), session_id, source, pin
 	 */
 	const setUsername = async (username, options = {}) => {
-		if (!USERNAME_QUERY_IDS.SET) {
-			throw new Error('Username SET query_id not configured — capture a live WA session to obtain it')
-		}
 		const { source = USERNAME_SOURCE.USER_INPUT, sessionId, pin } = options
+		// session_id links the check and set steps — generate one if caller doesn't supply it.
+		// reserved:true confirmed from live WA 2.26.26.4 capture (was wrongly false before).
+		const session_id = sessionId || require('crypto').randomUUID()
 		const variables = {
 			username,
-			reserved: false,
+			reserved: true,
 			source,
-			...(sessionId ? { session_id: sessionId } : {}),
+			session_id,
 			...(pin ? { pin } : {})
 		}
 		return mexQuery(variables, USERNAME_QUERY_IDS.SET, 'xwa2_username_set')
@@ -121,9 +122,6 @@ const makeUsernameSocket = config => {
 	 *   → sending username=null triggers the delete path on the server.
 	 */
 	const deleteUsername = async () => {
-		if (!USERNAME_QUERY_IDS.SET) {
-			throw new Error('Username SET query_id not configured — capture a live WA session to obtain it')
-		}
 		return mexQuery({ username: null }, USERNAME_QUERY_IDS.SET, 'xwa2_username_delete')
 	}
 
@@ -134,9 +132,6 @@ const makeUsernameSocket = config => {
 	 *   AbstractC41851rT.A0L(AbstractC130045pa.A0T(), C1363664w.class, "UsernameGet", false)
 	 */
 	const getMyUsername = async () => {
-		if (!USERNAME_QUERY_IDS.GET) {
-			throw new Error('Username GET query_id not configured — capture a live WA session to obtain it')
-		}
 		const data = await mexQuery({}, USERNAME_QUERY_IDS.GET, 'xwa2_username_get')
 		return data?.username ?? null
 	}
@@ -151,10 +146,9 @@ const makeUsernameSocket = config => {
 	 *   pin=null triggers the "delete" path on the server.
 	 */
 	const setUsernamePin = async pin => {
-		if (!USERNAME_QUERY_IDS.PIN_SET) {
-			throw new Error('Username PIN_SET query_id not configured — capture a live WA session to obtain it')
-		}
-		return mexQuery({ pin }, USERNAME_QUERY_IDS.PIN_SET, 'xwa2_username_pin_set')
+		// pin=null → delete PIN (server interprets empty/null variables as delete)
+		const variables = pin != null ? { pin } : {}
+		return mexQuery(variables, USERNAME_QUERY_IDS.PIN_SET, 'xwa2_username_pin_set')
 	}
 
 	/**

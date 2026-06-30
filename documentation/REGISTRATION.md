@@ -1,6 +1,6 @@
 # Registration, Passkeys & Account Management (`src/Socket/registration.js`)
 
-This module covers 84 MEX operations for passwords, passkeys (both account-level and registration-flow), contacts, age verification, Imagine Me, miscellaneous account operations, linking data bundles, and WWW companion device operations.
+Covers MEX operations for passwords, passkeys, contacts, age verification, Imagine Me, account operations, data bundles, and companion devices.
 
 ## Password Management
 

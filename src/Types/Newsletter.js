@@ -61,61 +61,61 @@ var XWAPaths
 var QueryIds
 ;(function (QueryIds) {
 	// Newsletter core
-	QueryIds['CREATE'] = '26278417231751160' // NewsletterCreate
-	QueryIds['CREATE_VERIFIED'] = '25691091733891788' // NewsletterCreateVerified
-	QueryIds['UPDATE_METADATA'] = '25976052865358570' // NewsletterMetadataUpdate
-	QueryIds['METADATA'] = '26099060629688650' // NewsletterMetadata
-	QueryIds['SUBSCRIBERS'] = '25646542368289350' // NewsletterFollowers
-	QueryIds['FOLLOW'] = '24658527423838740' // NewsletterJoin
+	QueryIds['CREATE'] = '27009199332109318' // NewsletterCreate
+	QueryIds['CREATE_VERIFIED'] = '27777918425146464' // NewsletterCreateVerified
+	QueryIds['UPDATE_METADATA'] = '27150690864552229' // NewsletterMetadataUpdate
+	QueryIds['METADATA'] = '26629010453445271' // NewsletterMetadata
+	QueryIds['SUBSCRIBERS'] = '25646542368289354' // NewsletterFollowers
+	QueryIds['FOLLOW'] = '24658527423838739' // NewsletterJoin
 	QueryIds['LEAVE'] = '25758579043742316' // NewsletterLeave
-	QueryIds['UNFOLLOW'] = '25757497553878990' // NewsletterFollowing (used for unfollow path)
-	QueryIds['MUTE'] = '25033614912931370' // NewsletterHide
+	QueryIds['UNFOLLOW'] = '26856957210673444' // NewsletterFollowing (used for unfollow path)
+	QueryIds['MUTE'] = '25033614912931367' // NewsletterHide
 	QueryIds['UNMUTE'] = '24551592861177484' // NewsletterUnhide
 	QueryIds['ADMIN_COUNT'] = '27579307995002556' // NewslettersAdminCapabilitiesQuery
-	QueryIds['CHANGE_OWNER'] = '24737692515842080' // NewsletterChangeOwner
-	QueryIds['DEMOTE'] = '25054538847517280' // NewsletterAdminDemote
-	QueryIds['DELETE'] = '31838460859131916' // NewsletterDelete
-	QueryIds['REACHOUT_TIMELOCK'] = '25627902213558772' // FetchReachoutTimelockQuery
-	QueryIds['MESSAGE_CAPPING_INFO'] = '25311901238461920' // XWA2MessageCappingInfoQuery
-	QueryIds['UPDATE_USER_SETTING'] = '24935528202764690' // NewsletterUpdateUserSetting
+	QueryIds['CHANGE_OWNER'] = '24737692515842078' // NewsletterChangeOwner
+	QueryIds['DEMOTE'] = '25054538847517281' // NewsletterAdminDemote
+	QueryIds['DELETE'] = '31838460859131915' // NewsletterDelete
+	QueryIds['REACHOUT_TIMELOCK'] = '25627902213558773' // FetchReachoutTimelockQuery
+	QueryIds['MESSAGE_CAPPING_INFO'] = '37491736743758664' // XWA2MessageCappingInfoQuery
+	QueryIds['UPDATE_USER_SETTING'] = '24935528202764688' // NewsletterUpdateUserSetting
 	// Newsletter admin/invite
-	QueryIds['ADMIN_INVITE'] = '26278681041745440' // NewsletterAdminInvite
+	QueryIds['ADMIN_INVITE'] = '26278681041745438' // NewsletterAdminInvite
 	QueryIds['ADMIN_INVITE_REVOKE'] = '24369392486051948' // NewsletterAdminInviteRevoke
-	QueryIds['ADMIN_INVITE_ACCEPT'] = '24934958956134856' // NewsletterAcceptAdminInvite
+	QueryIds['ADMIN_INVITE_ACCEPT'] = '24934958956134858' // NewsletterAcceptAdminInvite
 	QueryIds['ADMIN_METADATA'] = '26882701001369256' // NewsletterAdminMetadataQuery
 	QueryIds['ADMIN_PROFILE_UPDATE'] = '25959584293627630' // NewsletterAdminProfileUpdate
 	// Newsletter directory/search
-	QueryIds['DIRECTORY_LIST'] = '35420207774244120' // NewsletterDirectoryList
-	QueryIds['DIRECTORY_SEARCH'] = '26545699395089024' // NewsletterDirectorySearch
-	QueryIds['DIRECTORY_CATEGORY_PREVIEW'] = '25554326764266960' // NewsletterDirectoryCategoryPreview
-	QueryIds['SEARCH'] = '25909596625362196' // NewsletterSearch
-	QueryIds['RECOMMENDED'] = '26234104032880280' // NewsletterRecommended
-	QueryIds['SIMILAR'] = '33639678252347084' // NewsletterSimilar
-	QueryIds['FOLLOWING_LIST'] = '25757497553878990' // NewsletterFollowing
+	QueryIds['DIRECTORY_LIST'] = '27480627564903390' // NewsletterDirectoryList
+	QueryIds['DIRECTORY_SEARCH'] = '27887355094203575' // NewsletterDirectorySearch
+	QueryIds['DIRECTORY_CATEGORY_PREVIEW'] = '27432651036395658' // NewsletterDirectoryCategoryPreview
+	QueryIds['SEARCH'] = '25909596625362196' // NewsletterSearch (no APK match — kept as-is)
+	QueryIds['RECOMMENDED'] = '26638880912457992' // NewsletterRecommended
+	QueryIds['SIMILAR'] = '36410329795280256' // NewsletterSimilar
+	QueryIds['FOLLOWING_LIST'] = '26856957210673444' // NewsletterFollowing
 	// Newsletter engagement
-	QueryIds['INSIGHTS'] = '24672564052397920' // NewsletterInsights
+	QueryIds['INSIGHTS'] = '24672564052397921' // NewsletterInsights
 	QueryIds['POLL_VOTER_LIST'] = '24803802869271956' // NewsletterPollVoterList
-	QueryIds['REACTION_SENDERS_LIST'] = '25219734117717030' // NewsletterReactionSendersList
+	QueryIds['REACTION_SENDERS_LIST'] = '25219734117717032' // NewsletterReactionSendersList
 	QueryIds['QUESTION_RESPONSE_STATE_UPDATE'] = '24896618076668076' // NewsletterQuestionResponseStateUpdate
-	QueryIds['LOG_EXPOSURES'] = '24606408825709910' // NewsletterLogExposures
-	QueryIds['RANKING_FEATURES'] = '24742757908756090' // FetchNewsletterRankingFeatures
+	QueryIds['LOG_EXPOSURES'] = '24606408825709914' // NewsletterLogExposures
+	QueryIds['RANKING_FEATURES'] = '24742757908756088' // FetchNewsletterRankingFeatures
 	// Newsletter moderation
 	QueryIds['BLOCK_USER'] = '25106066249006236' // NewsletterBlockUser
-	QueryIds['USER_REPORTS'] = '26334442806191824' // NewsletterUserReports
-	QueryIds['CREATE_REPORT_APPEAL'] = '26787508127520150' // NewsletterCreateReportAppeal
-	QueryIds['ENFORCEMENTS'] = '25956852020603264' // NewsletterEnforcements
-	QueryIds['LINK_PREVIEW_CHECK'] = '24188786150796508' // NewsletterLinkPreviewCheck
-	QueryIds['UPDATE_VERIFICATION'] = '33965625006384290' // NewsletterUpdateVerification
-	QueryIds['LABEL_PAID_PARTNERSHIP'] = '26221505494211176' // NewsletterLabelPaidPartnership
+	QueryIds['USER_REPORTS'] = '27149305681394065' // NewsletterUserReports
+	QueryIds['CREATE_REPORT_APPEAL'] = '27792557363683798' // NewsletterCreateReportAppeal
+	QueryIds['ENFORCEMENTS'] = '27089116857425014' // NewsletterEnforcements
+	QueryIds['LINK_PREVIEW_CHECK'] = '24188786150796507' // NewsletterLinkPreviewCheck
+	QueryIds['UPDATE_VERIFICATION'] = '27133493439664458' // NewsletterUpdateVerification
+	QueryIds['LABEL_PAID_PARTNERSHIP'] = '26221505494211174' // NewsletterLabelPaidPartnership
 	// Newsletter Wamo (paid subscription)
-	QueryIds['WAMO_CHANGE_SUB'] = '25201342542835864' // NewsletterChangeWamoSub
+	QueryIds['WAMO_CHANGE_SUB'] = '25201342542835866' // NewsletterChangeWamoSub
 	QueryIds['WAMO_ENABLE_SUB'] = '25122474967344830' // NewsletterEnableWamoSub
 	QueryIds['WAMO_DISABLE_SUB'] = '31916794074578680' // NewsletterDisableWamoSub
-	QueryIds['WAMO_AFS_AGE_COLLECTION'] = '25012618978387376' // WamoAfsAgeCollection
-	QueryIds['WAMO_ASSET_COLLECTION'] = '24347085218298772' // WamoAssetCollection
-	QueryIds['WAMO_FETCH_ADHOC_NOTICE'] = '24758534413802424' // WamoFetchAdhocNoticeById
-	QueryIds['WAMO_FETCH_IDENTITY_TOKEN'] = '24677346488597664' // WamoFetchIdentityToken
+	QueryIds['WAMO_AFS_AGE_COLLECTION'] = '25012618978387375' // WamoAfsAgeCollection
+	QueryIds['WAMO_ASSET_COLLECTION'] = '24347085218298773' // WamoAssetCollection
+	QueryIds['WAMO_FETCH_ADHOC_NOTICE'] = '24758534413802422' // WamoFetchAdhocNoticeById
+	QueryIds['WAMO_FETCH_IDENTITY_TOKEN'] = '24677346488597665' // WamoFetchIdentityToken
 	QueryIds['WAMO_SUB_COMPLIANCE_INFO'] = '25105596879072480' // WamoSubGetComplianceInfo
-	QueryIds['WAMO_USER_ID_VERSION'] = '24958410737155268' // WamoUserIdVersion
+	QueryIds['WAMO_USER_ID_VERSION'] = '24958410737155269' // WamoUserIdVersion
 	QueryIds['WAMO_SET_USER_ID_VERSION'] = '8148672891859281' // SetWamoUserIdVersion
 })(QueryIds || (exports.QueryIds = QueryIds = {}))

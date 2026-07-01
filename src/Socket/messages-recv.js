@@ -46,7 +46,8 @@ const makeMessagesRecvSocket = config => {
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
 		messageRetryManager,
-		issuePrivacyTokens
+		issuePrivacyTokens,
+		getUSyncDevices
 	} = sock
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 	// Track when the socket fully opens so pending pre-connect messages are treated as history

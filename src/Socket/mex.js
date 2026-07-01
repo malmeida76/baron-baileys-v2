@@ -30,6 +30,8 @@ const executeWMexQuery = async (variables, queryId, dataPath, query, generateMes
 			const errorMessages = data.errors.map(err => err.message || 'Unknown error').join(', ')
 			const firstError = data.errors[0]
 			const errorCode = firstError.extensions?.error_code || 400
+			// Log full error payload to aid debugging stale/invalid query_id issues
+			console.error('[mex error] query_id=%s code=%s errors=%s', queryId, errorCode, JSON.stringify(data.errors))
 			throw new boom_1.Boom(`GraphQL server error: ${errorMessages}`, { statusCode: errorCode, data: firstError })
 		}
 		const response = dataPath ? data?.data?.[dataPath] : data?.data

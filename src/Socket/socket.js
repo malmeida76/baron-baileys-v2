@@ -1008,7 +1008,8 @@ const makeSocket = config => {
 		executeUSyncQuery,
 		onWhatsApp,
 		fetchAccountReachoutTimelock,
-		fetchNewChatMessageCap
+		fetchNewChatMessageCap,
+		logger
 	}
 }
 exports.makeSocket = makeSocket

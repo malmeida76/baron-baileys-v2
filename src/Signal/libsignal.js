@@ -441,7 +441,8 @@ function signalStorage({ creds, keys }, lidMapping) {
 			const key = creds.signedPreKey
 			return {
 				privKey: Buffer.from(key.keyPair.private),
-				pubKey: Buffer.from(key.keyPair.public)
+				pubKey: Buffer.from(key.keyPair.public),
+				signature: key.signature ? Buffer.from(key.signature) : undefined
 			}
 		},
 		loadSenderKey: async senderKeyName => {

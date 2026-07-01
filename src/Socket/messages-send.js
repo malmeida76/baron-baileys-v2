@@ -48,6 +48,28 @@ const makeMessagesSocket = config => {
 		trustInteropContact
 	} = sock
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
+	// Resolve all participant JIDs across the given group JIDs for status targeting.
+	// includeMe = false skips the bot's own JID (avoids self-send loops).
+	const resolveStatusAudience = async (groupJids, includeMe = false) => {
+		const myJid = authState.creds.me?.id
+		const seen = new Set()
+		const allUsers = []
+		for (const gjid of groupJids) {
+			let meta
+			try {
+				meta = cachedGroupMetadata ? await cachedGroupMetadata(gjid) : null
+				if (!meta) meta = await groupMetadata(gjid)
+			} catch { continue }
+			for (const p of meta?.participants || []) {
+				const id = p.id
+				if (!id || seen.has(id)) continue
+				if (!includeMe && id === myJid) continue
+				seen.add(id)
+				allUsers.push(id)
+			}
+		}
+		return { allUsers }
+	}
 	/**
 	 * Set of tctoken storage JIDs with a fire-and-forget issuePrivacyTokens IQ in flight.
 	 * Prevents duplicate IQs from rapid back-to-back sends before senderTimestamp persists.

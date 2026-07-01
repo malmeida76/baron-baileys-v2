@@ -233,6 +233,35 @@ sock.ev.on('business.privacy-settings-sync', s => console.log(s.categories))
 
 ---
 
+## Poll votes (automatic)
+
+`pollUpdateMessage` is now decrypted automatically inside the library — no standalone
+helper needed. When a user votes on a poll, the library emits `messages.update` with
+the decrypted vote attached:
+
+```js
+sock.ev.on('messages.update', updates => {
+	for (const { key, update } of updates) {
+		if (update.pollUpdates) {
+			for (const pu of update.pollUpdates) {
+				// pu.vote.selectedOptions — array of SHA-256 hashes of chosen option names
+				console.log('vote on poll', key.id, 'options:', pu.vote.selectedOptions)
+			}
+		}
+	}
+})
+```
+
+The library uses the bot's LID as `pollCreatorJid` (with PN fallback for accounts
+without LID), and `message.key.participant || message.key.remoteJid` as `voterJid` —
+so both LID and PN addressed votes decrypt correctly. `messageSecret` is found even
+when the creation message is wrapped in `viewOnceMessage` or `botInvokeMessage`.
+
+`getMessage` must be provided in the socket config and must return the stored
+`proto.Message` for the creation key (standard baileys setup already does this).
+
+---
+
 ## Tests
 
 See [`test/wa-web-protocol-port.test.js`](../test/wa-web-protocol-port.test.js)

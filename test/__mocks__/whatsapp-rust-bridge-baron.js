@@ -127,6 +127,40 @@ class LTHashAntiTampering {
 	}
 }
 
+// ── SessionCipher spy ─────────────────────────────────────────────────────────
+// Captures the storage object passed to it so tests can inspect what
+// loadSignedPreKey / loadPreKey return without needing real Signal sessions.
+class SessionCipher {
+	constructor(storage, addr) {
+		this._storage = storage
+		this._addr = addr
+		SessionCipher.instances.push(this)
+	}
+	async decryptPreKeyWhisperMessage(_ciphertext) {
+		// Call loadSignedPreKey so tests can verify its return shape
+		SessionCipher.lastLoadedSPK = await this._storage.loadSignedPreKey(1)
+		return Buffer.from('decrypted-pkmsg')
+	}
+	async decryptWhisperMessage(_ciphertext) {
+		return Buffer.from('decrypted-msg')
+	}
+	async encrypt(data) {
+		return { type: 3, body: Buffer.from(data).toString('binary') }
+	}
+}
+SessionCipher.instances = []
+SessionCipher.lastLoadedSPK = null
+
+class ProtocolAddress {
+	constructor(name, deviceId) {
+		this._name = name
+		this._deviceId = deviceId
+	}
+	toString() {
+		return `${this._name}.${this._deviceId}`
+	}
+}
+
 module.exports = {
 	hkdf,
 	aesDecryptGCM,
@@ -146,5 +180,7 @@ module.exports = {
 	verifySignature,
 	encodeNode,
 	decodeNode,
-	LTHashAntiTampering
+	LTHashAntiTampering,
+	SessionCipher,
+	ProtocolAddress
 }

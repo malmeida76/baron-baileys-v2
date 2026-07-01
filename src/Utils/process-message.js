@@ -992,55 +992,51 @@ const processMessage = async (
 				emitGroupUpdate({ hidden: true })
 				break
 		}
-	} /*  else if(content?.pollUpdateMessage) {
-        const creationMsgKey = content.pollUpdateMessage.pollCreationMessageKey!
-        // we need to fetch the poll creation message to get the poll enc key
-        // TODO: make standalone, remove getMessage reference
-        // TODO: Remove entirely
-        const pollMsg = await getMessage(creationMsgKey)
-        if(pollMsg) {
-            const meIdNormalised = jidNormalizedUser(meId)
-            const pollCreatorJid = getKeyAuthor(creationMsgKey, meIdNormalised)
-            const voterJid = getKeyAuthor(message.key, meIdNormalised)
-            const pollEncKey = pollMsg.messageContextInfo?.messageSecret!
-
-            try {
-                const voteMsg = decryptPollVote(
-                    content.pollUpdateMessage.vote!,
-                    {
-                        pollEncKey,
-                        pollCreatorJid,
-                        pollMsgId: creationMsgKey.id!,
-                        voterJid,
-                    }
-                )
-                ev.emit('messages.update', [
-                    {
-                        key: creationMsgKey,
-                        update: {
-                            pollUpdates: [
-                                {
-                                    pollUpdateMessageKey: message.key,
-                                    vote: voteMsg,
-                                    senderTimestampMs: (content.pollUpdateMessage.senderTimestampMs! as Long).toNumber(),
-                                }
-                            ]
-                        }
-                    }
-                ])
-            } catch(err) {
-                logger?.warn(
-                    { err, creationMsgKey },
-                    'failed to decrypt poll vote'
-                )
-            }
-        } else {
-            logger?.warn(
-                { creationMsgKey },
-                'poll creation message not found, cannot decrypt update'
-            )
-        }
-        } */
+	} else if (content?.pollUpdateMessage) {
+		const creationMsgKey = content.pollUpdateMessage.pollCreationMessageKey
+		const pollMsg = await getMessage(creationMsgKey)
+		if (pollMsg) {
+			// message may be wrapped in viewOnce or botInvoke — unwrap to find messageSecret
+			const inner = pollMsg.viewOnceMessage?.message || pollMsg.botInvokeMessage?.message || pollMsg
+			const pollEncKey = inner.messageContextInfo?.messageSecret || pollMsg.messageContextInfo?.messageSecret || null
+			if (!pollEncKey) {
+				logger?.warn({ creationMsgKey }, 'poll: messageSecret missing, cannot decrypt vote')
+			} else {
+				// prefer LID for pollCreatorJid; WA uses the addressing JID of the poll creator
+				const rawLid = creds.me?.lid
+				const meLidNorm = rawLid ? `${rawLid.split(':')[0]}@lid` : ''
+				const pollCreatorJid = meLidNorm || (0, WABinary_1.jidNormalizedUser)(meId)
+				// voterJid: use the primary addressing JID (LID or PN) from the update key
+				const voterJid = message.key.fromMe ? pollCreatorJid : message.key.participant || message.key.remoteJid
+				try {
+					const voteMsg = decryptPollVote(content.pollUpdateMessage.vote, {
+						pollEncKey,
+						pollCreatorJid,
+						pollMsgId: creationMsgKey.id,
+						voterJid
+					})
+					ev.emit('messages.update', [
+						{
+							key: creationMsgKey,
+							update: {
+								pollUpdates: [
+									{
+										pollUpdateMessageKey: message.key,
+										vote: voteMsg,
+										senderTimestampMs: (0, generics_1.toNumber)(content.pollUpdateMessage.senderTimestampMs)
+									}
+								]
+							}
+						}
+					])
+				} catch (err) {
+					logger?.warn({ err, creationMsgKey, pollCreatorJid, voterJid }, 'failed to decrypt poll vote')
+				}
+			}
+		} else {
+			logger?.warn({ creationMsgKey }, 'poll: creation message not found, cannot decrypt vote')
+		}
+	}
 	if (Object.keys(chat).length > 1) {
 		ev.emit('chats.update', [chat])
 	}

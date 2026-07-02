@@ -327,7 +327,7 @@ const makeRegistrationSocket = sock => {
 
 	const wwwGetCertificates = () => mexQuery({}, REGISTRATION_MEX_IDS.WWW_GET_CERTIFICATES, 'xwa2_www_get_certificates')
 
-	const wwwGetNonce = () => mexQuery({}, REGISTRATION_MEX_IDS.WWW_GET_NONCE, 'xwa2_www_get_nonce_for_companion_device')
+	const wwwGetNonce = () => mexQuery({}, REGISTRATION_MEX_IDS.WWW_GET_NONCE, 'xwa2_ent_get_canonical_ent_device_nonce')
 
 	const wwwTradeNonces = nonces =>
 		mexQuery({ nonces }, REGISTRATION_MEX_IDS.WWW_TRADE_NONCES, 'xwa2_www_trade_nonce_for_access_tokens')

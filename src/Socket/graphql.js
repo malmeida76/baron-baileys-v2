@@ -799,6 +799,110 @@ const makeGraphQLSocket = sock => {
 		wamoDyiJobDelete: jobId => wamo(WAMO_GQL_IDS.DYI_JOB_DELETE, { job_id: jobId }, 'xwa2_wamo_dyi_job_delete'),
 		wamoDyiJobStatus: jobId => wamo(WAMO_GQL_IDS.DYI_JOB_STATUS, { job_id: jobId }, 'xwa2_wamo_dyi_job_status'),
 
+		// ── Meta AI feedback / control (client-persist) ──────────────────────
+		metaAiFeedback: (messageId, rating, input = {}) =>
+			www(CLIENT_PERSIST_GQL_IDS.META_AI_FEEDBACK, { message_id: messageId, rating, ...input }, null),
+		metaAiStopGeneration: requestId =>
+			www(CLIENT_PERSIST_GQL_IDS.META_AI_STOP_GENERATION, { request_id: requestId }, null),
+		metaAiModesQuery: () => www(CLIENT_PERSIST_GQL_IDS.META_AI_MODES_QUERY, {}, null),
+		fetchMetaAiModes: () => www(CLIENT_PERSIST_GQL_IDS.FETCH_META_AI_MODES, {}, null),
+		metaAiRichPlaceDetails: placeId =>
+			www(CLIENT_PERSIST_GQL_IDS.META_AI_RICH_PLACE_DETAILS, { place_id: placeId }, null),
+		metaAiSideBySideSurveyResponse: input =>
+			www(CLIENT_PERSIST_GQL_IDS.META_AI_SIDE_BY_SIDE_SURVEY_RESPONSE, { input }, null),
+		metaAiBizAgentVoiceAttachments: (agentId, attachments) =>
+			www(CLIENT_PERSIST_GQL_IDS.META_AI_BIZ_AGENT_VOICE_ATTACHMENTS, { agent_id: agentId, attachments }, null),
+		metaAiCustomizationGenAiSetMode: (chatJid, mode) =>
+			www(CLIENT_PERSIST_GQL_IDS.META_AI_CUSTOMIZATION_GEN_AI_SET_MODE, { chat_jid: chatJid, mode }, null),
+		metaAiIntentCardNuxEligibilityReset: () =>
+			www(CLIENT_PERSIST_GQL_IDS.META_AI_INTENT_CARD_NUX_ELIGIBILITY_RESET, {}, null),
+		metaAiIntentCardNuxImpression: input =>
+			www(CLIENT_PERSIST_GQL_IDS.META_AI_INTENT_CARD_NUX_IMPRESSION, { input }, null),
+		metaAiIntentCardNuxImpressionQuery: () =>
+			www(CLIENT_PERSIST_GQL_IDS.META_AI_INTENT_CARD_NUX_IMPRESSION_QUERY, {}, null),
+
+		// ── MAI Unified User (client-persist) ────────────────────────────────
+		maiUnifiedUser: () => www(CLIENT_PERSIST_GQL_IDS.MAI_UNIFIED_USER, {}, null),
+		maiUnifiedUserQuery: () => www(CLIENT_PERSIST_GQL_IDS.MAI_UNIFIED_USER_QUERY, {}, null),
+		maiUnifiedUserReset: () => www(CLIENT_PERSIST_GQL_IDS.MAI_UNIFIED_USER_RESET, {}, null),
+
+		// ── MEMU avatar/persona (client-persist) ─────────────────────────────
+		memuProfileQuery: () => www(CLIENT_PERSIST_GQL_IDS.MEMU_PROFILE_QUERY, {}, null),
+		memuUpdateProfile: input => www(CLIENT_PERSIST_GQL_IDS.MEMU_UPDATE_PROFILE, { input }, null),
+		memuPreviewPhoto: input => www(CLIENT_PERSIST_GQL_IDS.MEMU_PREVIEW_PHOTO, { input }, null),
+		updateMemuSelfie: input => www(CLIENT_PERSIST_GQL_IDS.UPDATE_MEMU_SELFIE, { input }, null),
+		addMemuProfilePhotos: photos => www(CLIENT_PERSIST_GQL_IDS.ADD_MEMU_PROFILE_PHOTOS, { photos }, null),
+		createMemuProfile: input => www(CLIENT_PERSIST_GQL_IDS.CREATE_MEMU_PROFILE, { input }, null),
+		fbMemuPermissionQuery: () => www(CLIENT_PERSIST_GQL_IDS.FB_MEMU_PERMISSION_QUERY, {}, null),
+		getMemuStickerById: stickerId =>
+			www(CLIENT_PERSIST_GQL_IDS.GET_MEMU_STICKER_BY_ID, { sticker_id: stickerId }, null),
+		genAiVerifyMemuPhotos: photos => www(CLIENT_PERSIST_GQL_IDS.GEN_AI_VERIFY_MEMU_PHOTOS, { photos }, null),
+		genAiMeMenuUpdateVoice: (voiceId, options = {}) =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_MEMU_UPDATE_VOICE, { voice_id: voiceId, ...options }, null),
+		genAiSocialEntityDetails: entityId =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_SOCIAL_ENTITY_DETAILS, { entity_id: entityId }, null),
+
+		// ── GenAI Imagine (client-persist) ───────────────────────────────────
+		genAiImagineGenerate: (prompt, options = {}) =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_GENERATE, { prompt, ...options }, null),
+		genAiImagineGenerateFlash: (prompt, options = {}) =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_GENERATE_FLASH, { prompt, ...options }, null),
+		genAiImagineGenerateStreaming: (prompt, options = {}) =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_GENERATE_STREAMING, { prompt, ...options }, null),
+		genAiImagineGenerateFromImage: (imageId, prompt, options = {}) =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_GENERATE_FROM_IMAGE, { image_id: imageId, prompt, ...options }, null),
+		genAiImagineRegenerate: (imageId, options = {}) =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_REGENERATE, { image_id: imageId, ...options }, null),
+		genAiImagineEdit: (imageId, prompt, options = {}) =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_EDIT, { image_id: imageId, prompt, ...options }, null),
+		genAiImagineCanvasApi: (canvasId, input = {}) =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_CANVAS_API, { canvas_id: canvasId, ...input }, null),
+		genAiImagineInspirationCanvasApi: input =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_INSPIRATION_CANVAS_API, { input }, null),
+		genAiImagineSuggestions: context => www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_SUGGESTIONS, { context }, null),
+		genAiImagineDownloadMedia: mediaId =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_DOWNLOAD_MEDIA, { media_id: mediaId }, null),
+		genAiImagineSendMediaToChat: (chatJid, mediaId) =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_SEND_MEDIA_TO_CHAT, { chat_jid: chatJid, media_id: mediaId }, null),
+		genAiImagineBulkSendMediaToChat: (chatJids, mediaId) =>
+			www(
+				CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_BULK_SEND_MEDIA_TO_CHAT,
+				{ chat_jids: chatJids, media_id: mediaId },
+				null
+			),
+		genAiImagineHasMemuProfile: () => www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_HAS_MEMU_PROFILE, {}, null),
+		genAiImagineUpdateMemuProfilePermission: permission =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_UPDATE_MEMU_PROFILE_PERMISSION, { permission }, null),
+		genAiImaginePromptSummarization: prompt =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_PROMPT_SUMMARIZATION, { prompt }, null),
+		genAiImagineRestyleSections: (imageId, sections) =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_RESTYLE_SECTIONS, { image_id: imageId, sections }, null),
+		genAiImagineBulkFor3pIntents: input => www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_3P_FOR_INTENTS, { input }, null),
+		dropInImagineGenerate: (prompt, options = {}) =>
+			www(CLIENT_PERSIST_GQL_IDS.DROP_IN_IMAGINE_GENERATE, { prompt, ...options }, null),
+
+		// ── GenAI Edit (client-persist) ───────────────────────────────────────
+		genAiEditAnimate: (imageId, options = {}) =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_EDIT_ANIMATE, { image_id: imageId, ...options }, null),
+		genAiEditBackdropSuggestions: imageId =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_EDIT_BACKDROP_SUGGESTIONS, { image_id: imageId }, null),
+		genAiEditImageBackdrop: (imageId, backdropId, options = {}) =>
+			www(
+				CLIENT_PERSIST_GQL_IDS.GEN_AI_EDIT_IMAGE_BACKDROP,
+				{ image_id: imageId, backdrop_id: backdropId, ...options },
+				null
+			),
+		genAiEditSuggestions: imageId => www(CLIENT_PERSIST_GQL_IDS.GEN_AI_EDIT_SUGGESTIONS, { image_id: imageId }, null),
+		genAiEditUploadAuthenticImage: imageData =>
+			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_EDIT_UPLOAD_AUTHENTIC_IMAGE, { image_data: imageData }, null),
+
+		// ── Immersive creation (client-persist) ──────────────────────────────
+		immersiveCreationComplete: input => www(CLIENT_PERSIST_GQL_IDS.IMMERSIVE_CREATION_COMPLETE, { input }, null),
+		immersiveCreationConfig: () => www(CLIENT_PERSIST_GQL_IDS.IMMERSIVE_CREATION_CONFIG, {}, null),
+
+		// ── Misc client-persist ───────────────────────────────────────────────
+		simpleEcho: input => www(CLIENT_PERSIST_GQL_IDS.SIMPLE_ECHO, { input }, null),
+
 		// ── ID dictionaries (for raw access) ─────────────────────────────────
 		WWW_GQL_IDS,
 		FACEBOOK_GQL_IDS,

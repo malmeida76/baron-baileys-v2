@@ -485,6 +485,15 @@ const makeInteropSocket = sock => {
 	}
 
 	/**
+	 * Query all interop privacy settings via MEX.
+	 * Uses InteropPrivacySettingsQuery (doc_id: 24849123668112654).
+	 * Returns the current value for each privacy feature (e.g. GROUPADD).
+	 * dataPath: xwa2_interop_privacy_settings
+	 */
+	const queryInteropPrivacySettings = () =>
+		mexQuery({}, INTEROP_MEX_QUERY_IDS.PRIVACY_SETTINGS_QUERY, 'xwa2_interop_privacy_settings')
+
+	/**
 	 * Check whether an interop user allows being added to groups (GROUPADD privacy).
 	 * Returns true if the user can be added, false if blocked by their privacy settings.
 	 *
@@ -538,6 +547,7 @@ const makeInteropSocket = sock => {
 		leaveInteropGroup,
 		addParticipantsToInteropGroup,
 		queryInteropGroupInfo,
+		queryInteropPrivacySettings,
 		updateInteropPrivacySetting,
 		updateInteropPrivacySettingWithContactList,
 		getInteropGroupAddPrivacy,

@@ -877,7 +877,7 @@ const makeGraphQLSocket = sock => {
 			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_PROMPT_SUMMARIZATION, { prompt }, null),
 		genAiImagineRestyleSections: (imageId, sections) =>
 			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_RESTYLE_SECTIONS, { image_id: imageId, sections }, null),
-		genAiImagineBulkFor3pIntents: input => www(CLIENT_PERSIST_GQL_IDS.GEN_AI_IMAGINE_3P_FOR_INTENTS, { input }, null),
+		genAiImagineBulkFor3pIntents: input => www(WWW_GQL_IDS.GEN_AI_IMAGINE_3P_FOR_INTENTS, { input }, null),
 		dropInImagineGenerate: (prompt, options = {}) =>
 			www(CLIENT_PERSIST_GQL_IDS.DROP_IN_IMAGINE_GENERATE, { prompt, ...options }, null),
 
@@ -897,8 +897,8 @@ const makeGraphQLSocket = sock => {
 			www(CLIENT_PERSIST_GQL_IDS.GEN_AI_EDIT_UPLOAD_AUTHENTIC_IMAGE, { image_data: imageData }, null),
 
 		// ── Immersive creation (client-persist) ──────────────────────────────
-		immersiveCreationComplete: input => www(CLIENT_PERSIST_GQL_IDS.IMMERSIVE_CREATION_COMPLETE, { input }, null),
-		immersiveCreationConfig: () => www(CLIENT_PERSIST_GQL_IDS.IMMERSIVE_CREATION_CONFIG, {}, null),
+		immersiveCreationComplete: input => www(WWW_GQL_IDS.IMMERSIVE_CREATION_COMPLETE, { input }, null),
+		immersiveCreationConfig: () => www(WWW_GQL_IDS.IMMERSIVE_CREATION_CONFIG, {}, null),
 
 		// ── Misc client-persist ───────────────────────────────────────────────
 		simpleEcho: input => www(CLIENT_PERSIST_GQL_IDS.SIMPLE_ECHO, { input }, null),

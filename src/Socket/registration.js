@@ -72,6 +72,9 @@ const REGISTRATION_MEX_IDS = {
 	GET_CACHEABLE_UNLINKED_BUNDLE: '26339420835710173', // GetCacheableUnlinkedDataBundle
 	GET_UNLINKED_BUNDLE: '25515726664782894', // GetUnlinkedDataBundle
 	GET_DSB_INFO: '24832343819719050', // GetDsbInfo
+	// WAMO MEX (identity versioning)
+	WAMO_USER_ID_VERSION: '24958410737155269', // WamoUserIdVersion
+	WAMO_SET_USER_ID_VERSION: '8148672891859281', // SetWamoUserIdVersion
 	// WWW / web companion
 	WWW_CREATE_ACCESS_TOKEN: '7956082757804344', // WWWCreateAccessToken
 	WWW_CREATE_USER: '8548056818544135', // WWWCreateUser
@@ -158,19 +161,19 @@ const makeRegistrationSocket = sock => {
 	// ── Registration upsells ────────────────────────────────────────────────
 
 	const getRegistrationUpsells = () =>
-		mexQuery({}, REGISTRATION_MEX_IDS.GET_REGISTRATION_UPSELLS, 'xwa2_get_registration_upsells')
+		mexQuery({}, REGISTRATION_MEX_IDS.GET_REGISTRATION_UPSELLS, 'xwa2_dynamic_reg_upsells')
 
 	const getDynamicRegistrationUpsells = () =>
-		mexQuery({}, REGISTRATION_MEX_IDS.GET_DYNAMIC_REGISTRATION_UPSELLS, 'xwa2_get_dynamic_registration_upsells')
+		mexQuery({}, REGISTRATION_MEX_IDS.GET_DYNAMIC_REGISTRATION_UPSELLS, 'xwa2_dynamic_reg_upsells')
 
 	const registrationUpsellShown = upsellId =>
-		mexQuery({ upsell_id: upsellId }, REGISTRATION_MEX_IDS.REGISTRATION_UPSELL_SHOWN, 'xwa2_registration_upsell_shown')
+		mexQuery({ upsell_id: upsellId }, REGISTRATION_MEX_IDS.REGISTRATION_UPSELL_SHOWN, 'xwa2_reg_dynamic_upsell_shown')
 
 	const registrationDynamicUpsellShown = upsellId =>
 		mexQuery(
 			{ upsell_id: upsellId },
 			REGISTRATION_MEX_IDS.REGISTRATION_DYNAMIC_UPSELL_SHOWN,
-			'xwa2_registration_dynamic_upsell_shown'
+			'xwa2_reg_dynamic_upsell_shown'
 		)
 
 	const regAccountTransferVerifyToken = token =>
@@ -242,7 +245,7 @@ const makeRegistrationSocket = sock => {
 		mexQuery(
 			{ verifier_id: verifierId, confidence },
 			REGISTRATION_MEX_IDS.VALIDATE_VERIFIER_CONFIDENCE,
-			'xwa2_validate_verifier_confidence'
+			'xwa2_autoconf_validate_confidence'
 		)
 
 	const waBinaryDemoQuery = () => mexQuery({}, REGISTRATION_MEX_IDS.WA_BINARY_DEMO, 'xwa2_wa_binary_demo')
@@ -264,7 +267,7 @@ const makeRegistrationSocket = sock => {
 		mexQuery(
 			{ input: { title, body, scheduled_time: scheduledTime } },
 			REGISTRATION_MEX_IDS.REMINDER_CREATE,
-			'xwa2_reminder_create'
+			'xwa2_reminder_set'
 		)
 
 	const reminderDelete = reminderId =>
@@ -286,7 +289,7 @@ const makeRegistrationSocket = sock => {
 	}
 
 	const getAutoConfChallenge = () =>
-		mexQuery({}, REGISTRATION_MEX_IDS.GET_AUTO_CONF_CHALLENGE, 'xwa2_get_auto_conf_challenge')
+		mexQuery({}, REGISTRATION_MEX_IDS.GET_AUTO_CONF_CHALLENGE, 'xwa2_autoconf_request_confidence_challenge')
 
 	const getWaOldResponse = () => mexQuery({}, REGISTRATION_MEX_IDS.GET_WA_OLD_RESPONSE, 'xwa2_get_wa_old_response')
 
@@ -295,16 +298,12 @@ const makeRegistrationSocket = sock => {
 	const fetchBotPkiCrl = () => mexQuery({}, REGISTRATION_MEX_IDS.FETCH_BOT_PKI_CRL, 'xwa2_fetch_bot_pki_crl')
 
 	const teeChatParticipationToken = (chatJid, participants) =>
-		mexQuery(
-			{ chat_jid: chatJid, participants },
-			REGISTRATION_MEX_IDS.TEE_CHAT_TOKEN,
-			'xwa2_tee_chat_participation_generate_token'
-		)
+		mexQuery({ chat_jid: chatJid, participants }, REGISTRATION_MEX_IDS.TEE_CHAT_TOKEN, 'xwa2_generate_wa_tee_gs_token')
 
 	// ── Linking data bundles ─────────────────────────────────────────────────
 
 	const generateLinkingBundle = () =>
-		mexQuery({}, REGISTRATION_MEX_IDS.GENERATE_LINKING_BUNDLE, 'xwa2_generate_linking_bundle')
+		mexQuery({}, REGISTRATION_MEX_IDS.GENERATE_LINKING_BUNDLE, 'xwa2_waffle_generate_linking_data_bundle')
 
 	const getCacheableUnlinkedBundle = () =>
 		mexQuery({}, REGISTRATION_MEX_IDS.GET_CACHEABLE_UNLINKED_BUNDLE, 'xwa2_get_cacheable_unlinked_bundle')
@@ -312,6 +311,11 @@ const makeRegistrationSocket = sock => {
 	const getUnlinkedBundle = () => mexQuery({}, REGISTRATION_MEX_IDS.GET_UNLINKED_BUNDLE, 'xwa2_get_unlinked_bundle')
 
 	const getDsbInfo = () => mexQuery({}, REGISTRATION_MEX_IDS.GET_DSB_INFO, 'xwa2_get_dsb_info')
+
+	const wamoUserIdVersion = () => mexQuery({}, REGISTRATION_MEX_IDS.WAMO_USER_ID_VERSION, 'xwa2_wamo_user_id_version')
+
+	const setWamoUserIdVersion = version =>
+		mexQuery({ version }, REGISTRATION_MEX_IDS.WAMO_SET_USER_ID_VERSION, 'xwa2_wamo_user_id_version_set')
 
 	// ── WWW / web companion ──────────────────────────────────────────────────
 
@@ -411,6 +415,8 @@ const makeRegistrationSocket = sock => {
 		getCacheableUnlinkedBundle,
 		getUnlinkedBundle,
 		getDsbInfo,
+		wamoUserIdVersion,
+		setWamoUserIdVersion,
 		// WWW
 		wwwCreateAccessToken,
 		wwwCreateUser,

@@ -49,6 +49,7 @@ var XWAPaths
 	XWAPaths['xwa2_newsletter_update_user_setting'] = 'xwa2_newsletter_update_user_setting'
 	XWAPaths['xwa2_newsletter_create_verified'] = 'xwa2_newsletter_create_verified'
 	XWAPaths['xwa2_newsletter_ranking_features'] = 'xwa2_newsletter_ranking_features'
+	XWAPaths['xwa2_newsletter_question_response_state_update'] = 'xwa2_newsletter_question_response_state_update'
 	// Wamo paths
 	XWAPaths['xwa2_wamo_afs_age_collection'] = 'xwa2_wamo_afs_age_collection'
 	XWAPaths['xwa2_wamo_asset_collection'] = 'xwa2_wamo_asset_collection'

@@ -750,6 +750,28 @@ const makeNewsletterSocket = config => {
 				Types_1.XWAPaths.xwa2_newsletter_ranking_features
 			),
 		/**
+		 * Fetch account reachout timelock (rate-limit state for outreach actions).
+		 */
+		fetchReachoutTimelock: async () =>
+			executeWMexQuery({}, Types_1.QueryIds.REACHOUT_TIMELOCK, Types_1.XWAPaths.xwa2_fetch_account_reachout_timelock),
+		/**
+		 * Fetch message capping info (daily/weekly send limit status).
+		 */
+		fetchMessageCappingInfo: async () =>
+			executeWMexQuery({}, Types_1.QueryIds.MESSAGE_CAPPING_INFO, Types_1.XWAPaths.xwa2_message_capping_info),
+		/**
+		 * Update the response state for a question in a newsletter message.
+		 * @param {string} jid - Newsletter JID
+		 * @param {string} serverId - Server message ID of the question
+		 * @param {string} state - New response state (e.g. 'OPEN', 'CLOSED')
+		 */
+		newsletterQuestionResponseStateUpdate: async (jid, serverId, state) =>
+			executeWMexQuery(
+				{ newsletter_id: jid, server_id: serverId, state },
+				Types_1.QueryIds.QUESTION_RESPONSE_STATE_UPDATE,
+				Types_1.XWAPaths.xwa2_newsletter_question_response_state_update
+			),
+		/**
 		 * Send view receipts for newsletter messages (marks them as seen).
 		 * serverMessageIds: array of numeric server-side message IDs.
 		 * Mirrors SendViewReceiptJob in the APK — builds a receipt stanza

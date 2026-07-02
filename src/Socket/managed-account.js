@@ -6,34 +6,34 @@ const { executeWMexQuery } = require('./mex')
 
 const MANAGED_ACCOUNT_MEX_IDS = {
 	// Managed accounts (parental/family)
-	QUERY: '27232244463035264', // ManagedAccountQuery
+	QUERY: '27232244463035262', // ManagedAccountQuery
 	INITIATE_LINKING: '26671873552498548', // ManagedAccountInitiateLinkingQuery
 	VALIDATE_LINKING: '35449808311284430', // ManagedAccountValidateLinkingQuery
-	ACCEPT_LINKING: '26708926155457676', // ManagedAccountAcceptLinkingMutation
-	COMPLETE_LINKING: '26866501363013204', // ManagedAccountCompleteLinkingMutation
-	REVOKE_LINKING: '27435058196100676', // ManagedAccountRevokeLinkingMutation
+	ACCEPT_LINKING: '26708926155457677', // ManagedAccountAcceptLinkingMutation
+	COMPLETE_LINKING: '26866501363013203', // ManagedAccountCompleteLinkingMutation
+	REVOKE_LINKING: '27435058196100677', // ManagedAccountRevokeLinkingMutation
 	SYNC_ACTIVITIES: '26594352680227840', // ManagedAccountSyncActivities
-	UPDATE_PIN: '27653949584193080', // ManagedAccountUpdatePinMutation
-	GET_SPONSOR_AGE_VERIFICATION: '26433623289634520', // ManagedAccountGetSponsorAgeVerificationInfoQuery
+	UPDATE_PIN: '27653949584193082', // ManagedAccountUpdatePinMutation
+	GET_SPONSOR_AGE_VERIFICATION: '26433623289634522', // ManagedAccountGetSponsorAgeVerificationInfoQuery
 	// Payments passkey
-	PAYMENTS_PASSKEY_HAS_CREDENTIAL: '26328228500182424', // PaymentsPasskeyHasCredential
-	PAYMENTS_PASSKEY_ENROLL_CHALLENGE: '25233109079721000', // PaymentsPasskeyEnrollChallengeMutation
-	PAYMENTS_PASSKEY_ENROLL_VERIFY: '26563835863283056', // PaymentsPasskeyEnrollVerifyMutation
+	PAYMENTS_PASSKEY_HAS_CREDENTIAL: '26328228500182426', // PaymentsPasskeyHasCredential
+	PAYMENTS_PASSKEY_ENROLL_CHALLENGE: '25233109079721001', // PaymentsPasskeyEnrollChallengeMutation
+	PAYMENTS_PASSKEY_ENROLL_VERIFY: '26563835863283058', // PaymentsPasskeyEnrollVerifyMutation
 	PAYMENTS_PASSKEY_REGISTER_FINISH: '26658791263822236', // PaymentsPasskeyRegisterFinishMutation
 	PAYMENTS_PASSKEY_AUTH_CHALLENGE: '26425370627105628', // PaymentsPasskeyAuthChallengeMutation
-	PAYMENTS_PASSKEY_TOGGLE_ON: '25841989828834576', // PaymentsPasskeyToggleOnMutation
-	PAYMENTS_PASSKEY_TOGGLE_OFF: '26267673096201390', // PaymentsPasskeyToggleOffMutation
-	PAYMENTS_PASSKEY_TOGGLE_CHALLENGE: '26133062322993190', // PaymentsPasskeyToggleChallengeMutation
+	PAYMENTS_PASSKEY_TOGGLE_ON: '25841989828834577', // PaymentsPasskeyToggleOnMutation
+	PAYMENTS_PASSKEY_TOGGLE_OFF: '26267673096201391', // PaymentsPasskeyToggleOffMutation
+	PAYMENTS_PASSKEY_TOGGLE_CHALLENGE: '26133062322993192', // PaymentsPasskeyToggleChallengeMutation
 	PAYMENTS_PASSKEY_TOGGLE_CLEANUP: '26492078607084840', // PaymentsPasskeyToggleCleanupMutation
 	PAYMENTS_PASSKEY_CLEANUP: '26538338805859092', // PaymentsPasskeyCleanupMutation
-	PAYMENTS_IS_RECOVERABLE: '26524118810513490', // PaymentsIsAccountRecoverable
+	PAYMENTS_IS_RECOVERABLE: '27351347491148282', // PaymentsIsAccountRecoverable
 	// UPI onboarding (India payments)
-	UPI_SEND_OTP: '25829794080022468', // UpiOnboardingSendOtpMutation
-	UPI_VERIFY_OTP: '34104109149204668', // UpiOnboardingVerifyOtpQuery
+	UPI_SEND_OTP: '25829794080022469', // UpiOnboardingSendOtpMutation
+	UPI_VERIFY_OTP: '34104109149204669', // UpiOnboardingVerifyOtpQuery
 	// IPLS (Identity-Preserving Linked Spaces)
-	IPLS_HANDSHAKE_INIT: '25523747957257184', // IplsClientHandshakeInitRequest
+	IPLS_HANDSHAKE_INIT: '25523747957257182', // IplsClientHandshakeInitRequest
 	IPLS_CLIENT_HELLO: '25376330595367716', // IplsClientHelloPayload
-	IPLSD_CLIENT_HELLO_V2: '26561780580105680', // IplsdClientHelloV2
+	IPLSD_CLIENT_HELLO_V2: '26561780580105679', // IplsdClientHelloV2
 	IPLSD_CLIENT_INIT_V2: '26547193874915344' // IplsdClientInitV2
 }
 
@@ -45,11 +45,14 @@ const makeManagedAccountSocket = sock => {
 
 	// ── Managed Accounts ─────────────────────────────────────────────────────
 
-	const managedAccountQuery = jid =>
-		mexQuery({ jid }, MANAGED_ACCOUNT_MEX_IDS.QUERY, 'xwa2_managed_account')
+	const managedAccountQuery = jid => mexQuery({ jid }, MANAGED_ACCOUNT_MEX_IDS.QUERY, 'xwa2_managed_account')
 
 	const managedAccountInitiateLinking = phoneNumber =>
-		mexQuery({ phone_number: phoneNumber }, MANAGED_ACCOUNT_MEX_IDS.INITIATE_LINKING, 'xwa2_managed_account_initiate_linking')
+		mexQuery(
+			{ phone_number: phoneNumber },
+			MANAGED_ACCOUNT_MEX_IDS.INITIATE_LINKING,
+			'xwa2_managed_account_initiate_linking'
+		)
 
 	const managedAccountValidateLinking = (linkingToken, sponsorJid) =>
 		mexQuery(
@@ -59,13 +62,25 @@ const makeManagedAccountSocket = sock => {
 		)
 
 	const managedAccountAcceptLinking = linkingToken =>
-		mexQuery({ linking_token: linkingToken }, MANAGED_ACCOUNT_MEX_IDS.ACCEPT_LINKING, 'xwa2_managed_account_accept_linking')
+		mexQuery(
+			{ linking_token: linkingToken },
+			MANAGED_ACCOUNT_MEX_IDS.ACCEPT_LINKING,
+			'xwa2_managed_account_accept_linking'
+		)
 
 	const managedAccountCompleteLinking = linkingToken =>
-		mexQuery({ linking_token: linkingToken }, MANAGED_ACCOUNT_MEX_IDS.COMPLETE_LINKING, 'xwa2_managed_account_complete_linking')
+		mexQuery(
+			{ linking_token: linkingToken },
+			MANAGED_ACCOUNT_MEX_IDS.COMPLETE_LINKING,
+			'xwa2_managed_account_complete_linking'
+		)
 
 	const managedAccountRevokeLinking = sponsoredJid =>
-		mexQuery({ sponsored_jid: sponsoredJid }, MANAGED_ACCOUNT_MEX_IDS.REVOKE_LINKING, 'xwa2_managed_account_revoke_linking')
+		mexQuery(
+			{ sponsored_jid: sponsoredJid },
+			MANAGED_ACCOUNT_MEX_IDS.REVOKE_LINKING,
+			'xwa2_managed_account_revoke_linking'
+		)
 
 	const managedAccountSyncActivities = (jid, lastSyncTime = null) => {
 		const variables = { jid }
@@ -74,10 +89,18 @@ const makeManagedAccountSocket = sock => {
 	}
 
 	const managedAccountUpdatePin = (oldPin, newPin) =>
-		mexQuery({ input: { old_pin: oldPin, new_pin: newPin } }, MANAGED_ACCOUNT_MEX_IDS.UPDATE_PIN, 'xwa2_managed_account_update_pin')
+		mexQuery(
+			{ input: { old_pin: oldPin, new_pin: newPin } },
+			MANAGED_ACCOUNT_MEX_IDS.UPDATE_PIN,
+			'xwa2_managed_account_update_pin'
+		)
 
 	const managedAccountGetSponsorAgeVerification = sponsorJid =>
-		mexQuery({ sponsor_jid: sponsorJid }, MANAGED_ACCOUNT_MEX_IDS.GET_SPONSOR_AGE_VERIFICATION, 'xwa2_managed_account_sponsor_age_verification')
+		mexQuery(
+			{ sponsor_jid: sponsorJid },
+			MANAGED_ACCOUNT_MEX_IDS.GET_SPONSOR_AGE_VERIFICATION,
+			'xwa2_managed_account_sponsor_age_verification'
+		)
 
 	// ── Payments Passkey ─────────────────────────────────────────────────────
 
@@ -102,7 +125,11 @@ const makeManagedAccountSocket = sock => {
 		)
 
 	const paymentsPasskeyAuthChallenge = credentialId =>
-		mexQuery({ credential_id: credentialId }, MANAGED_ACCOUNT_MEX_IDS.PAYMENTS_PASSKEY_AUTH_CHALLENGE, 'xwa2_payments_passkey_auth_challenge')
+		mexQuery(
+			{ credential_id: credentialId },
+			MANAGED_ACCOUNT_MEX_IDS.PAYMENTS_PASSKEY_AUTH_CHALLENGE,
+			'xwa2_payments_passkey_auth_challenge'
+		)
 
 	const paymentsPasskeyToggleOn = () =>
 		mexQuery({}, MANAGED_ACCOUNT_MEX_IDS.PAYMENTS_PASSKEY_TOGGLE_ON, 'xwa2_payments_passkey_toggle_on')
@@ -111,7 +138,11 @@ const makeManagedAccountSocket = sock => {
 		mexQuery({}, MANAGED_ACCOUNT_MEX_IDS.PAYMENTS_PASSKEY_TOGGLE_OFF, 'xwa2_payments_passkey_toggle_off')
 
 	const paymentsPasskeyToggleChallenge = credentialId =>
-		mexQuery({ credential_id: credentialId }, MANAGED_ACCOUNT_MEX_IDS.PAYMENTS_PASSKEY_TOGGLE_CHALLENGE, 'xwa2_payments_passkey_toggle_challenge')
+		mexQuery(
+			{ credential_id: credentialId },
+			MANAGED_ACCOUNT_MEX_IDS.PAYMENTS_PASSKEY_TOGGLE_CHALLENGE,
+			'xwa2_payments_passkey_toggle_challenge'
+		)
 
 	const paymentsPasskeyToggleCleanup = () =>
 		mexQuery({}, MANAGED_ACCOUNT_MEX_IDS.PAYMENTS_PASSKEY_TOGGLE_CLEANUP, 'xwa2_payments_passkey_toggle_cleanup')

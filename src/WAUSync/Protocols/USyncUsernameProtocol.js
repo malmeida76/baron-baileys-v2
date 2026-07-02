@@ -19,7 +19,8 @@ class USyncUsernameProtocol {
 	parser(node) {
 		if (node.tag === 'username') {
 			;(0, WABinary_1.assertNodeErrorFree)(node)
-			return typeof node.content === 'string' ? node.content : null
+			const username = node.content != null ? node.content.toString() : null
+			return username && username.length > 0 ? username : null
 		}
 		return null
 	}

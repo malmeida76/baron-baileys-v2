@@ -358,9 +358,20 @@ const decodeDecompressedBinaryNode = (buffer, opts, indexRef = { index: 0 }) => 
 	}
 }
 exports.decodeDecompressedBinaryNode = decodeDecompressedBinaryNode
+const JS_DECODE_OPTS = {
+	TAGS: constants.TAGS,
+	SINGLE_BYTE_TOKENS: constants.SINGLE_BYTE_TOKENS,
+	DOUBLE_BYTE_TOKENS: constants.DOUBLE_BYTE_TOKENS,
+}
 const decodeBinaryNode = buff => {
 	const u8 = buff instanceof Uint8Array ? buff : new Uint8Array(buff.buffer, buff.byteOffset, buff.byteLength)
-	const internal = rb.decodeNode(u8)
-	return rustNodeToJs(internal.toJSON())
+	try {
+		const internal = rb.decodeNode(u8)
+		return rustNodeToJs(internal.toJSON())
+	} catch (_) {
+		// WASM token table is outdated (e.g. INTEROP_JID_TUPLE=244, INTEROP_JID=245).
+		// Fall back to the JS decoder which knows all current tags.
+		return (0, exports.decodeDecompressedBinaryNode)(buff, JS_DECODE_OPTS)
+	}
 }
 exports.decodeBinaryNode = decodeBinaryNode

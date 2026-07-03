@@ -25,10 +25,12 @@ exports.transferDevice =
 	exports.SERVER_JID =
 	exports.OFFICIAL_BIZ_JID =
 	exports.BOT_WHATSAPP_NET =
+	exports.BOT_SERVER =
 	exports.S_WHATSAPP_NET =
 		void 0
 exports.S_WHATSAPP_NET = '@s.whatsapp.net'
-exports.BOT_WHATSAPP_NET = '@bot.whatsapp.net'
+exports.BOT_WHATSAPP_NET = '@bot.whatsapp.net' // kept for compat; wire domain is '@bot'
+exports.BOT_SERVER = '@bot'
 exports.OFFICIAL_BIZ_JID = '16505361212@c.us'
 exports.SERVER_JID = 'server@c.us'
 exports.PSA_WID = '0@c.us'
@@ -47,7 +49,7 @@ const getServerFromDomainType = (initialServer, domainType) => {
 		case WAJIDDomains.LID:
 			return 'lid'
 		case WAJIDDomains.BOT:
-			return 'bot.whatsapp.net'
+			return 'bot'
 		case WAJIDDomains.HOSTED:
 			return 'hosted'
 		case WAJIDDomains.HOSTED_LID:
@@ -298,7 +300,7 @@ const jidDecode = jid => {
 	let domainType = WAJIDDomains.WHATSAPP
 	if (server === 'lid') {
 		domainType = WAJIDDomains.LID
-	} else if (server === 'bot.whatsapp.net') {
+	} else if (server === 'bot') {
 		domainType = WAJIDDomains.BOT
 	} else if (server === 'hosted') {
 		domainType = WAJIDDomains.HOSTED
@@ -352,10 +354,10 @@ exports.isHostedPnUser = isHostedPnUser
 const isHostedLidUser = jid => jid?.endsWith('@hosted.lid')
 exports.isHostedLidUser = isHostedLidUser
 const botRegexp = /^1313555\d{4}$|^131655500\d{2}$/
-/** is the jid a bot — covers Meta AI bots (@c.us number pattern) and generic bot server (@bot.whatsapp.net) */
+/** is the jid a bot — covers @bot wire domain and @c.us number patterns for WA-native bots */
 const isJidBot = jid =>
 	jid &&
-	((botRegexp.test(jid.split('@')[0]) && jid.endsWith('@c.us')) || jid.endsWith('@bot.whatsapp.net'))
+	((botRegexp.test(jid.split('@')[0]) && jid.endsWith('@c.us')) || jid.endsWith('@bot'))
 exports.isJidBot = isJidBot
 const jidNormalizedUser = jid => {
 	const result = (0, exports.jidDecode)(jid)

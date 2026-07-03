@@ -12,6 +12,7 @@ const Utils_1 = require('../Utils')
 const browser_utils_1 = require('../Utils/browser-utils')
 const WABinary_1 = require('../WABinary')
 const BinaryInfo_js_1 = require('../WAM/BinaryInfo.js')
+const WAM_1 = require('../WAM')
 const WAUSync_1 = require('../WAUSync/')
 const Client_1 = require('./Client')
 const mex_1 = require('./mex')
@@ -71,6 +72,7 @@ const makeSocket = config => {
 		routingInfo: authState?.creds?.routingInfo
 	})
 	const ws = new Client_1.WebSocketClient(url, config)
+	const connectionStartTs = Date.now()
 	ws.connect()
 	const sendPromise = (0, util_1.promisify)(ws.send)
 	/** send a raw buffer */
@@ -503,6 +505,7 @@ const makeSocket = config => {
 		closed = true
 		logger.info({ trace: error?.stack }, error ? 'connection errored' : 'connection closed')
 		clearInterval(keepAliveReq)
+		clearInterval(wamFlushInterval)
 		clearTimeout(qrTimer)
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
@@ -691,8 +694,30 @@ const makeSocket = config => {
 			]
 		})
 	}
+	const flushWAMEvents = async () => {
+		if (!publicWAMBuffer.events.length) return
+		try {
+			const encoded = (0, WAM_1.encodeWAM)(publicWAMBuffer)
+			publicWAMBuffer.events = []
+			publicWAMBuffer.sequence = (publicWAMBuffer.sequence + 1) & 0xffff
+			await sendWAMBuffer(encoded)
+		} catch (e) {
+			logger.debug({ err: e }, 'WAM flush failed')
+		}
+	}
+	const wsOpenTs = { value: connectionStartTs }
 	ws.on('message', onMessageReceived)
 	ws.on('open', async () => {
+		wsOpenTs.value = Date.now()
+		publicWAMBuffer.events.push({
+			WebcSocketConnect: {
+				props: {
+					webcSocketConnectDuration: wsOpenTs.value - connectionStartTs,
+					webcSocketConnectReason: 0
+				},
+				globals: {}
+			}
+		})
 		try {
 			await validateConnection()
 		} catch (err) {
@@ -700,6 +725,7 @@ const makeSocket = config => {
 			void end(err)
 		}
 	})
+	const wamFlushInterval = setInterval(() => { void flushWAMEvents() }, 30_000)
 	ws.on('error', mapWebSocketError(end))
 	ws.on(
 		'close',
@@ -787,6 +813,14 @@ const makeSocket = config => {
 		}
 		logger.info('opened connection to WA')
 		clearTimeout(qrTimer) // will never happen in all likelyhood -- but just in case WA sends success on first try
+		// Fire Login WAM event
+		publicWAMBuffer.events.push({
+			Login: {
+				props: { loginResult: 1, loginT: Date.now() - connectionStartTs, connectionOrigin: 1, passive: false },
+				globals: {}
+			}
+		})
+		void flushWAMEvents()
 		ev.emit('creds.update', { me: { ...authState.creds.me, lid: node.attrs.lid } })
 		if (config.syncFullHistory && authState.creds.initialFullSyncDone !== true) {
 			logger.debug('initial full history sync completed, persisting one-time flag')

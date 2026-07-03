@@ -437,6 +437,80 @@ const makeMessagesRecvSocket = config => {
 				break
 		}
 	}
+	// Handles incoming <status> stanzas pushed by the server for newsletter posts.
+	// These arrive on the CB:status channel (AB-gated by status_e2ee_recv_over_status_stanza).
+	const handleNewsletterStatus = async node => {
+		const { id, from, server_id, t, is_sender, offline, type, edit } = node.attrs
+		const serverId = server_id ? +server_id : undefined
+		const timestamp = t ? +t : undefined
+		const isSender = is_sender === 'true'
+		const offlineIndex = offline !== undefined ? +offline : undefined
+
+		// Parse optional <meta> child: edit timestamps, interaction type, admin profile
+		const metaNode = (0, WABinary_1.getBinaryNodeChild)(node, 'meta')
+		const meta = metaNode ? {
+			...(metaNode.attrs.msg_edit_t ? { editedAt: +metaNode.attrs.msg_edit_t } : {}),
+			...(metaNode.attrs.original_msg_t ? { originalTimestamp: +metaNode.attrs.original_msg_t } : {}),
+			...(metaNode.attrs.interaction_type ? { interactionType: metaNode.attrs.interaction_type } : {}),
+			...(metaNode.attrs.parent_server_id ? { parentServerId: +metaNode.attrs.parent_server_id } : {}),
+			...(metaNode.attrs.response_server_id ? { responseServerId: +metaNode.attrs.response_server_id } : {}),
+		} : undefined
+
+		// Parse engagement counters
+		const viewsNode = (0, WABinary_1.getBinaryNodeChild)(node, 'views_count')
+		const viewsCount = viewsNode?.attrs?.count !== undefined ? +viewsNode.attrs.count : undefined
+		const responsesNode = (0, WABinary_1.getBinaryNodeChild)(node, 'responses_count')
+		const responsesCount = responsesNode?.attrs?.count !== undefined ? +responsesNode.attrs.count : undefined
+		const reactionsNode = (0, WABinary_1.getBinaryNodeChild)(node, 'reactions')
+		const reactionCounts = (0, WABinary_1.getBinaryNodeChildren)(reactionsNode ?? { content: [] }, 'reaction')
+			.map(r => ({ code: r.attrs.code, count: +r.attrs.count }))
+
+		let content = null
+		let mediaType = undefined
+
+		if (type === 'reaction') {
+			const reactionNode = (0, WABinary_1.getBinaryNodeChild)(node, 'reaction')
+			content = { type: 'reaction', code: reactionNode?.attrs?.code }
+		} else if (type === 'text' || type === 'media') {
+			const plaintextNode = (0, WABinary_1.getBinaryNodeChild)(node, 'plaintext')
+			if (type === 'media') mediaType = plaintextNode?.attrs?.mediatype
+			if (edit === '7' || edit === '8') {
+				content = { type: 'revoke', edit }
+			} else if (plaintextNode?.content) {
+				try {
+					const buf = Buffer.isBuffer(plaintextNode.content)
+						? plaintextNode.content
+						: Buffer.from(plaintextNode.content)
+					const message = index_js_1.proto.Message.decode(buf).toJSON()
+					content = { type, message, ...(mediaType ? { mediaType } : {}) }
+				} catch (err) {
+					logger.error({ err }, 'Failed to decode newsletter status plaintext')
+					content = { type, raw: true, ...(mediaType ? { mediaType } : {}) }
+				}
+			}
+		}
+
+		// Send ACK back to server
+		const ackType = type === 'reaction' ? 'reaction' : (edit ? 'revoke' : type)
+		await sendNode({
+			tag: 'ack',
+			attrs: { id, to: from, class: 'status', type: ackType || 'text' },
+			content: undefined
+		})
+
+		ev.emit('newsletter.status', {
+			id: from,
+			serverId,
+			timestamp,
+			isSender,
+			...(offlineIndex !== undefined ? { offlineIndex } : {}),
+			...(meta ? { meta } : {}),
+			...(viewsCount !== undefined ? { viewsCount } : {}),
+			...(responsesCount !== undefined ? { responsesCount } : {}),
+			...(reactionCounts.length ? { reactionCounts } : {}),
+			content
+		})
+	}
 	const sendMessageAck = async (node, errorCode) => {
 		const stanza = (0, stanza_ack_1.buildAckStanza)(node, errorCode, authState.creds.me.id)
 		logger.debug({ recv: { tag: node.tag, attrs: node.attrs }, sent: stanza.attrs }, 'sent ack')
@@ -2580,6 +2654,10 @@ const makeMessagesRecvSocket = config => {
 	ws.on('CB:notification', async node => {
 		nodelogger(node)
 		await processNode('notification', node, 'handling notification', handleNotification)
+	})
+	ws.on('CB:status', async node => {
+		nodelogger(node)
+		await handleNewsletterStatus(node).catch(error => onUnexpectedError(error, 'handling newsletter status'))
 	})
 	ws.on('CB:ack,class:message', node => {
 		nodelogger(node)

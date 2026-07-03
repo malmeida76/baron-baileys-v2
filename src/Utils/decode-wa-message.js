@@ -11,7 +11,6 @@ exports.decryptMessageNode =
 		void 0
 exports.decodeMessageNode = decodeMessageNode
 const boom_1 = require('@hapi/boom')
-const index_js_1 = require('../../WAProto/index.js')
 const WAProto_1 = require('../../WAProto/index.js')
 const WABinary_1 = require('../WABinary')
 const generics_1 = require('./generics')
@@ -255,7 +254,7 @@ function decodeMessageNode(stanza, meId, meLid) {
 		Owner: 'Baron' // Non-WhatsApp attribute
 	}
 	if (key.fromMe) {
-		fullMessage.status = index_js_1.proto.WebMessageInfo.Status.SERVER_ACK
+		fullMessage.status = WAProto_1.proto.WebMessageInfo.Status.SERVER_ACK
 	}
 	if (msgType === 'newsletter') {
 		fullMessage.newsletter_server_id = +stanza.attrs?.server_id
@@ -316,8 +315,8 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 				]
 				for (const { tag, attrs, content } of _stanzaContent) {
 					if (tag === 'verified_name' && content instanceof Uint8Array) {
-						const cert = index_js_1.proto.VerifiedNameCertificate.decode(content)
-						const details = index_js_1.proto.VerifiedNameCertificate.Details.decode(cert.details)
+						const cert = WAProto_1.proto.VerifiedNameCertificate.decode(content)
+						const details = WAProto_1.proto.VerifiedNameCertificate.Details.decode(cert.details)
 						fullMessage.verifiedBizName = details.verifiedName
 						// Extract verified level from node attrs (LOW / HIGH / UNKNOWN)
 						if (attrs?.verified_level) {
@@ -469,7 +468,7 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 						let msg =
 							e2eType === 'msmsg'
 								? (0, meta_ai_msmsg_1.decodeDecryptedMsmsgMessage)(msgBuffer)
-								: index_js_1.proto.Message.decode(msgToDecode)
+								: WAProto_1.proto.Message.decode(msgToDecode)
 						const outerMessageContextInfo = msg.messageContextInfo
 						msg = msg.deviceSentMessage?.message || msg
 						// deviceSentMessage.message may not carry messageContextInfo (e.g. messageSecret for @bot)
@@ -496,7 +495,10 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 									item: msg.fastRatchetKeySenderKeyDistributionMessage
 								})
 							} catch (err) {
-								logger.error({ key: fullMessage.key, err }, 'failed to process fast ratchet sender key distribution message')
+								logger.error(
+									{ key: fullMessage.key, err },
+									'failed to process fast ratchet sender key distribution message'
+								)
 							}
 						}
 						if (fullMessage.message) {
@@ -558,10 +560,12 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 								amount: pm.amount1000 ? pm.amount1000 / 1000 : null,
 								currency: pm.currencyCodeIso4217 || null,
 								status: pm.status || null,
-								transactionTimestamp: pm.transactionTimestamp ? pm.transactionTimestamp.toNumber?.() || pm.transactionTimestamp : null,
+								transactionTimestamp: pm.transactionTimestamp
+									? pm.transactionTimestamp.toNumber?.() || pm.transactionTimestamp
+									: null,
 								type: pm.type || null,
 								method: pm.paymentMethod || null,
-								futureProofed: pm.futureProofed || false,
+								futureProofed: pm.futureProofed || false
 							}
 						}
 						if (msg.requestPaymentMessage) {
@@ -569,7 +573,7 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 							fullMessage.paymentRequest = {
 								amount: msg.requestPaymentMessage.amount || null,
 								currency: msg.requestPaymentMessage.currencyCodeIso4217 || null,
-								expiry: msg.requestPaymentMessage.expiryTimestamp || null,
+								expiry: msg.requestPaymentMessage.expiryTimestamp || null
 							}
 						}
 						if (msg.sendPaymentMessage) {
@@ -597,14 +601,14 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 								// 0 = FIRST_PARTY, 1 = THIRD_PARTY
 								origin: sp.stickerPackOrigin,
 								size: sp.stickerPackSize,
-								stickers: sp.stickers || [],
+								stickers: sp.stickers || []
 							}
 						}
 						// --- AI media collection metadata from bot context ---
 						if (msg.messageContextInfo?.botMetadata?.aiMediaCollectionMetadata) {
 							fullMessage.aiMediaCollectionMetadata = {
 								collectionId: msg.messageContextInfo.botMetadata.aiMediaCollectionMetadata.collectionId,
-								uploadOrderIndex: msg.messageContextInfo.botMetadata.aiMediaCollectionMetadata.uploadOrderIndex,
+								uploadOrderIndex: msg.messageContextInfo.botMetadata.aiMediaCollectionMetadata.uploadOrderIndex
 							}
 						}
 						// --- ProtocolMessage: AI media collection coordination ---
@@ -613,7 +617,7 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 							const amc = msg.protocolMessage.aiMediaCollectionMessage
 							fullMessage.aiMediaCollection = {
 								collectionId: amc.collectionId,
-								expectedMediaCount: amc.expectedMediaCount,
+								expectedMediaCount: amc.expectedMediaCount
 							}
 						}
 						// --- SplitPaymentMessage ---
@@ -629,9 +633,9 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 									jid: p.jid,
 									amount: p.amount,
 									// 0 = PENDING, 1 = PAID
-									status: p.status,
+									status: p.status
 								})),
-								createdAtMs: sp.createdAtMs ? (sp.createdAtMs.toNumber?.() || sp.createdAtMs) : null,
+								createdAtMs: sp.createdAtMs ? sp.createdAtMs.toNumber?.() || sp.createdAtMs : null
 							}
 						}
 						// --- PaymentInviteMessage (FBPAY / UPI / NOVI) ---
@@ -641,9 +645,9 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 							fullMessage.paymentInvite = {
 								serviceType: SERVICE_TYPE[msg.paymentInviteMessage.serviceType] || 'UNKNOWN',
 								expiry: msg.paymentInviteMessage.expiryTimestamp
-									? (msg.paymentInviteMessage.expiryTimestamp.toNumber?.() || msg.paymentInviteMessage.expiryTimestamp)
+									? msg.paymentInviteMessage.expiryTimestamp.toNumber?.() || msg.paymentInviteMessage.expiryTimestamp
 									: null,
-								incentiveEligible: msg.paymentInviteMessage.incentiveEligible || false,
+								incentiveEligible: msg.paymentInviteMessage.incentiveEligible || false
 							}
 						}
 						// --- PaymentReminderMessage ---
@@ -709,14 +713,14 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 							isSessionRecordError: isSessionRecordError(err)
 						}
 						logger.error(errorContext, 'failed to decrypt message')
-						fullMessage.messageStubType = index_js_1.proto.WebMessageInfo.StubType.CIPHERTEXT
+						fullMessage.messageStubType = WAProto_1.proto.WebMessageInfo.StubType.CIPHERTEXT
 						fullMessage.messageStubParameters = [err.message.toString()]
 					}
 				}
 			}
 			// if nothing was found to decrypt
 			if (!decryptables && !fullMessage.key?.isViewOnce) {
-				fullMessage.messageStubType = index_js_1.proto.WebMessageInfo.StubType.CIPHERTEXT
+				fullMessage.messageStubType = WAProto_1.proto.WebMessageInfo.StubType.CIPHERTEXT
 				fullMessage.messageStubParameters = [exports.NO_MESSAGE_FOUND_ERROR_TEXT]
 			}
 		}

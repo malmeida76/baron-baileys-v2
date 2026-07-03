@@ -73,14 +73,17 @@ const xmppPreKey = (pair, id) => ({
 })
 exports.xmppPreKey = xmppPreKey
 const parseAndInjectE2ESessions = async (node, repository) => {
-	const extractKey = key =>
-		key
-			? {
-					keyId: (0, WABinary_1.getBinaryNodeChildUInt)(key, 'id', 3),
-					publicKey: (0, crypto_1.generateSignalPubKey)((0, WABinary_1.getBinaryNodeChildBuffer)(key, 'value')),
-					signature: (0, WABinary_1.getBinaryNodeChildBuffer)(key, 'signature')
-				}
-			: undefined
+	const extractKey = key => {
+		if (!key) return undefined
+		const cipherSuite = key.attrs?.key_cipher_suite
+		return {
+			keyId: (0, WABinary_1.getBinaryNodeChildUInt)(key, 'id', 3),
+			publicKey: (0, crypto_1.generateSignalPubKey)((0, WABinary_1.getBinaryNodeChildBuffer)(key, 'value')),
+			signature: (0, WABinary_1.getBinaryNodeChildBuffer)(key, 'signature'),
+			// 0x05 = Curve25519 (standard Signal), 0x2a = Kyber-1024 (PQXDH)
+			...(cipherSuite !== undefined ? { cipherSuite } : {})
+		}
+	}
 	const nodes = (0, WABinary_1.getBinaryNodeChildren)((0, WABinary_1.getBinaryNodeChild)(node, 'list'), 'user')
 	for (const node of nodes) {
 		;(0, WABinary_1.assertNodeErrorFree)(node)

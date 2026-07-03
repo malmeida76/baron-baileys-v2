@@ -306,7 +306,15 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 					}
 				}
 
-				for (const { tag, attrs, content } of stanza.content) {
+				// Process unicast enc nodes (pkmsg/msg) before group enc nodes (skmsg/frskmsg)
+				// so that any SenderKeyDistributionMessage carried in a unicast is installed
+				// before GroupCipher.decrypt() runs for frskmsg in the same stanza.
+				const _isGroupEnc = n => n.tag === 'enc' && (n.attrs?.type === 'skmsg' || n.attrs?.type === 'frskmsg')
+				const _stanzaContent = [
+					...stanza.content.filter(n => !_isGroupEnc(n)),
+					...stanza.content.filter(n => _isGroupEnc(n))
+				]
+				for (const { tag, attrs, content } of _stanzaContent) {
 					if (tag === 'verified_name' && content instanceof Uint8Array) {
 						const cert = index_js_1.proto.VerifiedNameCertificate.decode(content)
 						const details = index_js_1.proto.VerifiedNameCertificate.Details.decode(cert.details)
@@ -450,6 +458,17 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 								})
 							} catch (err) {
 								logger.error({ key: fullMessage.key, err }, 'failed to process sender key distribution message')
+							}
+						}
+						if (msg.fastRatchetKeySenderKeyDistributionMessage) {
+							//eslint-disable-next-line max-depth
+							try {
+								await repository.processSenderKeyDistributionMessage({
+									authorJid: author,
+									item: msg.fastRatchetKeySenderKeyDistributionMessage
+								})
+							} catch (err) {
+								logger.error({ key: fullMessage.key, err }, 'failed to process fast ratchet sender key distribution message')
 							}
 						}
 						if (fullMessage.message) {

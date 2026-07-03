@@ -517,6 +517,12 @@ const extractCommunityMetadata = result => {
 		: (0, WABinary_1.jidEncode)(community.attrs.id || '', 'g.us')
 	const eph = (0, WABinary_1.getBinaryNodeChild)(community, 'ephemeral')?.attrs.expiration
 	const memberAddMode = (0, WABinary_1.getBinaryNodeChildString)(community, 'member_add_mode') === 'all_member_add'
+	const linkedGroupsNode = (0, WABinary_1.getBinaryNodeChild)(community, 'linked_groups')
+	const linkLimit = community.attrs.parent_group_link_limit
+		? +community.attrs.parent_group_link_limit
+		: linkedGroupsNode?.attrs?.parent_group_link_limit
+			? +linkedGroupsNode.attrs.parent_group_link_limit
+			: undefined
 	const metadata = {
 		id: communityId,
 		subject: community.attrs.subject || '',
@@ -542,7 +548,8 @@ const extractCommunityMetadata = result => {
 			}
 		}),
 		ephemeralDuration: eph ? +eph : undefined,
-		addressingMode: (0, WABinary_1.getBinaryNodeChildString)(community, 'addressing_mode')
+		addressingMode: (0, WABinary_1.getBinaryNodeChildString)(community, 'addressing_mode'),
+		linkLimit
 	}
 	return metadata
 }

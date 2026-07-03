@@ -7,9 +7,71 @@ const WABinary_1 = require('../WABinary')
 const groups_1 = require('./groups')
 const aigroups_1 = require('./aigroups')
 const mex_1 = require('./mex')
+
+/** Map a raw role string from the wire to the NewsletterRole enum. */
+const mapNewsletterRole = raw => {
+	if (!raw) return Types_1.NewsletterRole.GUEST
+	const upper = String(raw).toUpperCase()
+	switch (upper) {
+		case 'OWNER': return Types_1.NewsletterRole.OWNER
+		case 'ADMIN': return Types_1.NewsletterRole.ADMIN
+		case 'SUBSCRIBER': return Types_1.NewsletterRole.SUBSCRIBER
+		default: return Types_1.NewsletterRole.GUEST
+	}
+}
+
+/** Map a raw state string from the wire to the NewsletterState enum. */
+const mapNewsletterState = raw => {
+	if (!raw) return Types_1.NewsletterState.UNKNOWN
+	const upper = String(raw).toUpperCase()
+	switch (upper) {
+		case 'ACTIVE': return Types_1.NewsletterState.ACTIVE
+		case 'SUSPENDED': return Types_1.NewsletterState.SUSPENDED
+		case 'GEO_SUSPENDED': return Types_1.NewsletterState.GEO_SUSPENDED
+		default: return Types_1.NewsletterState.UNKNOWN
+	}
+}
+
+/** Map a raw reaction setting/codes value from the wire to the NewsletterReactionSetting enum. */
+const mapReactionSetting = raw => {
+	if (!raw) return Types_1.NewsletterReactionSetting.NONE
+	const upper = String(raw).toUpperCase()
+	switch (upper) {
+		case 'ALLOWLIST': return Types_1.NewsletterReactionSetting.ALLOWLIST
+		case 'BLOCKLIST': return Types_1.NewsletterReactionSetting.BLOCKLIST
+		default: return Types_1.NewsletterReactionSetting.NONE
+	}
+}
+
+/**
+ * Enrich a raw newsletter metadata object with normalised protocol fields.
+ * Handles both flat objects (direct API result) and objects that nest additional
+ * data under thread_metadata / viewer_metadata.
+ */
+const enrichNewsletterMetadata = raw => {
+	if (!raw || typeof raw !== 'object') return raw
+	const thread = raw.thread_metadata || {}
+	const viewer = raw.viewer_metadata || {}
+	return {
+		...raw,
+		role: mapNewsletterRole(viewer.role ?? raw.role),
+		newsletterState: mapNewsletterState(raw.state ?? thread.state),
+		reactionSetting: mapReactionSetting(
+			thread.reaction_codes ?? thread.reaction_setting ??
+			raw.reaction_codes ?? raw.reaction_setting
+		),
+		dsaEligibilityCountries: thread.dsa_eligibility_countries ?? raw.dsa_eligibility_countries ?? null,
+		dsaDecision: thread.dsa_decision ?? raw.dsa_decision ?? null,
+		pinnedMessage:
+			thread.pinned_message_server_id ?? thread.pinned_message_id ??
+			raw.pinned_message_server_id ?? raw.pinned_message_id ?? null,
+		hasQuestionsFeature: !!(thread.has_questions_feature ?? raw.has_questions_feature ?? false),
+	}
+}
+
 const parseNewsletterCreateResponse = response => {
 	const { id, thread_metadata: thread, viewer_metadata: viewer } = response
-	return {
+	const base = {
 		id: id,
 		owner: undefined,
 		name: thread.name.text,
@@ -22,18 +84,26 @@ const parseNewsletterCreateResponse = response => {
 			id: thread.picture.id,
 			directPath: thread.picture.direct_path
 		},
-		mute_state: viewer.mute
+		mute_state: viewer.mute,
+		role: mapNewsletterRole(viewer.role),
+		newsletterState: mapNewsletterState(thread.state),
+		reactionSetting: mapReactionSetting(thread.reaction_codes ?? thread.reaction_setting),
+		dsaEligibilityCountries: thread.dsa_eligibility_countries ?? null,
+		dsaDecision: thread.dsa_decision ?? null,
+		pinnedMessage: thread.pinned_message_server_id ?? thread.pinned_message_id ?? null,
+		hasQuestionsFeature: !!(thread.has_questions_feature ?? false),
 	}
+	return base
 }
 const parseNewsletterMetadata = result => {
 	if (typeof result !== 'object' || result === null) {
 		return null
 	}
 	if ('id' in result && typeof result.id === 'string') {
-		return result
+		return enrichNewsletterMetadata(result)
 	}
 	if ('result' in result && typeof result.result === 'object' && result.result !== null && 'id' in result.result) {
-		return result.result
+		return enrichNewsletterMetadata(result.result)
 	}
 	return null
 }

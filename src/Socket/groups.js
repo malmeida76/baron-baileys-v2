@@ -734,6 +734,11 @@ const extractGroupMetadata = result => {
 		capiCreatedGroup: group.attrs.capi_created === 'true' || undefined,
 		appealStatus: group.attrs.appeal_status || undefined,
 		isSubGroupHidden: group.attrs.sub_group_visibility === 'hidden' || undefined,
+		membershipApprovalMode: group.attrs.membership_approval_mode || undefined,
+		joinPermissions: group.attrs.join_permissions || undefined,
+		isDefaultSubgroup: group.attrs.default_subgroup !== undefined ? true : undefined,
+		isGeneralSubgroup: group.attrs.general_subgroup !== undefined ? true : undefined,
+		isHiddenSubgroup: group.attrs.hidden_subgroup !== undefined ? true : undefined,
 		participants: (0, WABinary_1.getBinaryNodeChildren)(group, 'participant').map(({ attrs }) => {
 			// TODO: Store LID MAPPINGS
 			return {
@@ -747,7 +752,8 @@ const extractGroupMetadata = result => {
 				admin: attrs.type || null,
 				memberLabel: attrs.label || undefined,
 				memberLabelTimestamp: attrs.label_ts ? +attrs.label_ts : undefined,
-				isBanned: attrs.error === '403' || attrs.ban === 'true' || undefined
+				isBanned: attrs.error === '403' || attrs.ban === 'true' || undefined,
+				uuid: attrs.uuid || attrs.participant_uuid || undefined
 			}
 		}),
 		bannedParticipants: (0, WABinary_1.getBinaryNodeChildren)(group, 'participant')

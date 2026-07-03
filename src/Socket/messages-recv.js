@@ -350,7 +350,9 @@ const makeMessagesRecvSocket = config => {
 					})
 				}
 				break
-			case 'message':
+			case 'message': {
+				const viewCount = child.attrs.view_count !== undefined ? +child.attrs.view_count : undefined
+				const impressionCount = child.attrs.impression_count !== undefined ? +child.attrs.impression_count : undefined
 				const plaintextNode = (0, WABinary_1.getBinaryNodeChild)(child, 'plaintext')
 				if (plaintextNode?.content) {
 					try {
@@ -368,6 +370,9 @@ const makeMessagesRecvSocket = config => {
 							message: messageProto,
 							messageTimestamp: +child.attrs.t
 						}).toJSON()
+						// Attach insight counters when the server includes them
+						if (viewCount !== undefined) fullMessage.views = viewCount
+						if (impressionCount !== undefined) fullMessage.impressions = impressionCount
 						await upsertMessage(fullMessage, 'append')
 						logger.info('Processed plaintext newsletter message')
 					} catch (error) {
@@ -375,6 +380,7 @@ const makeMessagesRecvSocket = config => {
 					}
 				}
 				break
+			}
 			case 'live_updates': {
 				// Live engagement updates: reactions + forwards per message.
 				// Wire: <live_updates> → <messages t="..."> → <message server_id="...">
@@ -400,13 +406,18 @@ const makeMessagesRecvSocket = config => {
 				}
 				break
 			}
-			case 'pin':
+			case 'pin': {
+				const pinnedServerId = child.attrs.message_id || child.attrs.server_id
+				const isPinned = child.attrs.action !== 'unpin'
 				ev.emit('newsletter.pin', {
 					id: from,
-					server_id: child.attrs.message_id || child.attrs.server_id,
-					pinned: child.attrs.action !== 'unpin'
+					server_id: pinnedServerId,
+					pinned: isPinned
 				})
+				// Sync the pinnedMessage field on the newsletter metadata object
+				ev.emit('newsletters.update', [{ id: from, pinnedMessage: isPinned ? pinnedServerId : null }])
 				break
+			}
 			case 'category':
 				ev.emit('newsletter-settings.update', {
 					id: from,
@@ -934,7 +945,8 @@ const makeMessagesRecvSocket = config => {
 								: undefined,
 						lid: (0, WABinary_1.isPnUser)(attrs.jid) && (0, WABinary_1.isLidUser)(attrs.lid) ? attrs.lid : undefined,
 						username: attrs.participant_username || attrs.username || undefined,
-						admin: attrs.type || null
+						admin: attrs.type || null,
+						uuid: attrs.uuid || attrs.participant_uuid || undefined
 					}
 				})
 				if (
@@ -1003,6 +1015,42 @@ const makeMessagesRecvSocket = config => {
 					isDenied ? 'revoked' : 'rejected'
 				]
 				break
+			case 'sibling_link': {
+				const linkedGroupJid = (0, WABinary_1.getBinaryNodeChild)(child, 'group')?.attrs?.jid || child.attrs?.jid
+				ev.emit('groups.update', [
+					{
+						id: fullNode.attrs.from,
+						siblingGroupLinked: linkedGroupJid || true,
+						author: actingParticipantLid,
+						authorPn: actingParticipantPn
+					}
+				])
+				break
+			}
+			case 'sibling_unlink': {
+				const unlinkedGroupJid = (0, WABinary_1.getBinaryNodeChild)(child, 'group')?.attrs?.jid || child.attrs?.jid
+				ev.emit('groups.update', [
+					{
+						id: fullNode.attrs.from,
+						siblingGroupUnlinked: unlinkedGroupJid || true,
+						author: actingParticipantLid,
+						authorPn: actingParticipantPn
+					}
+				])
+				break
+			}
+			case 'clear_history': {
+				const historyClearTimestamp = child.attrs?.t ? +child.attrs.t : (0, Date)()
+				ev.emit('groups.update', [
+					{
+						id: fullNode.attrs.from,
+						historyClearTimestamp,
+						author: actingParticipantLid,
+						authorPn: actingParticipantPn
+					}
+				])
+				break
+			}
 		}
 	}
 	const normalizeNotificationParticipant = async (jid, groupData) => {
@@ -1730,6 +1778,52 @@ const makeMessagesRecvSocket = config => {
 			const items = (0, WABinary_1.getBinaryNodeChildren)(content[0], 'item')
 			ids.push(...items.map(i => i.attrs.id))
 		}
+		// E. Media Retry Notification Receipt
+		// Server tells us a specific message's media should be re-fetched
+		if (attrs.type === 'media-retry') {
+			const mediaRetryNode =
+				(0, WABinary_1.getBinaryNodeChild)(node, 'media-retry') ||
+				(0, WABinary_1.getBinaryNodeChild)(node, 'media_retry')
+			ev.emit('messages.media-retry', {
+				ids,
+				from: attrs.from,
+				participant: attrs.participant,
+				t: attrs.t,
+				retryAttrs: mediaRetryNode?.attrs
+			})
+			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack media-retry receipt'))
+			return
+		}
+		// F. Server Error Receipt
+		// Server signals a delivery error for one or more messages
+		if (attrs.type === 'server-error') {
+			const errorNode = (0, WABinary_1.getBinaryNodeChild)(node, 'error')
+			ev.emit('messages.server-error', {
+				ids,
+				from: attrs.from,
+				participant: attrs.participant,
+				t: attrs.t,
+				errorCode: errorNode?.attrs?.code || attrs.error_code,
+				errorText: errorNode?.attrs?.text || errorNode?.content?.toString?.()
+			})
+			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack server-error receipt'))
+			return
+		}
+		// D. Receipt aggregation
+		// Server sent a batched-receipt (receipt_agg attr) — emit dedicated event instead of
+		// processing each ID individually so callers can handle the batch atomically
+		if (attrs.receipt_agg) {
+			ev.emit('receipt.batched', {
+				ids,
+				from: attrs.from,
+				participant: attrs.participant,
+				type: attrs.type,
+				t: attrs.t,
+				receiptAgg: attrs.receipt_agg
+			})
+			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack batched receipt'))
+			return
+		}
 		try {
 			await Promise.all([
 				receiptMutex.mutex(async () => {
@@ -2191,9 +2285,14 @@ const makeMessagesRecvSocket = config => {
 				}
 			}
 			if (status === 'offer') {
-				call.isVideo = !!(0, WABinary_1.getBinaryNodeChild)(infoChild, 'video')
+				const videoNode = (0, WABinary_1.getBinaryNodeChild)(infoChild, 'video')
+				const audioNode = (0, WABinary_1.getBinaryNodeChild)(infoChild, 'audio')
+				call.isVideo = !!videoNode
 				call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
 				call.groupJid = infoChild.attrs['group-jid']
+				// Extract negotiated codecs from offer child nodes
+				if (audioNode?.attrs?.codec) call.audioCodec = audioNode.attrs.codec
+				if (videoNode?.attrs?.codec) call.videoCodec = videoNode.attrs.codec
 				await callOfferCache.set(call.id, call)
 			}
 			const existingCall = await callOfferCache.get(call.id)
@@ -2203,8 +2302,34 @@ const makeMessagesRecvSocket = config => {
 				call.isGroup = existingCall.isGroup
 				call.callerPn = call.callerPn || existingCall.callerPn
 			}
+			// Enrich event payload for signalling-only statuses
+			if (status === 'peer_state') {
+				const stateChild = (0, WABinary_1.getBinaryNodeChild)(infoChild, 'peer_state')
+				call.state = stateChild?.attrs?.state || infoChild.attrs?.state
+			} else if (status === 'group_info') {
+				call.payload = infoChild.attrs
+			} else if (status === 'video_state') {
+				const vsChild = (0, WABinary_1.getBinaryNodeChild)(infoChild, 'video_state')
+				const enabledRaw = vsChild?.attrs?.enabled ?? infoChild.attrs?.enabled
+				call.enabled = enabledRaw === 'true' || enabledRaw === '1'
+			} else if (status === 'enc_rekey') {
+				const rekeyChild =
+					(0, WABinary_1.getBinaryNodeChild)(infoChild, 'enc-rekey') ||
+					(0, WABinary_1.getBinaryNodeChild)(infoChild, 'enc_rekey')
+				if (rekeyChild?.content && Buffer.isBuffer(rekeyChild.content)) {
+					try {
+						call.rekeyPayload = (0, Utils_1.decodeE2eRekeyPayload)(rekeyChild.content)
+					} catch (e) {
+						logger.debug({ e }, 'failed to decode enc-rekey payload in handleCall')
+					}
+				}
+			}
 			// delete data once call has ended
-			if (status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate') {
+			if (
+				status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate' ||
+				status === 'reject_do_not_disturb' || status === 'mic_permission_denied' ||
+				status === 'camera_permission_denied' || status === 'remote_busy' || status === 'remote_offline'
+			) {
 				await callOfferCache.del(call.id)
 			}
 			await normalizeCallEventJids(call, infoChild)
@@ -2219,7 +2344,10 @@ const makeMessagesRecvSocket = config => {
 	// <mute_v2>, <transport>, … each with a call-id) instead of wrapped in <call>.
 	// This additively handles those: emit a 'call' event for state stanzas and ack ALL
 	// of them (otherwise WhatsApp keeps redelivering). The <call> path above is untouched.
-	const CALL_STATE_TAGS = new Set(['offer', 'offer_notice', 'terminate', 'accept', 'reject', 'preaccept'])
+	const CALL_STATE_TAGS = new Set([
+		'offer', 'offer_notice', 'terminate', 'accept', 'reject', 'preaccept', 'accept_ack',
+		'enc-rekey', 'enc_rekey', 'peer_state', 'group_info', 'video_state', 'video_state_ack', 'flow_control'
+	])
 	const handleStandaloneCallStanza = async node => {
 		try {
 			if (!CALL_STATE_TAGS.has(node.tag)) {
@@ -2239,9 +2367,14 @@ const makeMessagesRecvSocket = config => {
 				status
 			}
 			if (status === 'offer') {
-				call.isVideo = !!(0, WABinary_1.getBinaryNodeChild)(node, 'video')
+				const videoNode = (0, WABinary_1.getBinaryNodeChild)(node, 'video')
+				const audioNode = (0, WABinary_1.getBinaryNodeChild)(node, 'audio')
+				call.isVideo = !!videoNode
 				call.isGroup = attrs.type === 'group' || !!attrs['group-jid']
 				call.groupJid = attrs['group-jid']
+				// Extract negotiated codecs from offer child nodes
+				if (audioNode?.attrs?.codec) call.audioCodec = audioNode.attrs.codec
+				if (videoNode?.attrs?.codec) call.videoCodec = videoNode.attrs.codec
 				if (callId) {
 					await callOfferCache.set(callId, call)
 				}
@@ -2252,7 +2385,33 @@ const makeMessagesRecvSocket = config => {
 				call.isGroup = existingCall.isGroup
 				call.callerPn = call.callerPn || existingCall.callerPn
 			}
-			if (callId && (status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate')) {
+			// Enrich event payload for signalling-only statuses
+			if (status === 'peer_state') {
+				const stateChild = (0, WABinary_1.getBinaryNodeChild)(node, 'peer_state')
+				call.state = stateChild?.attrs?.state || attrs?.state
+			} else if (status === 'group_info') {
+				call.payload = attrs
+			} else if (status === 'video_state') {
+				const vsChild = (0, WABinary_1.getBinaryNodeChild)(node, 'video_state')
+				const enabledRaw = vsChild?.attrs?.enabled ?? attrs?.enabled
+				call.enabled = enabledRaw === 'true' || enabledRaw === '1'
+			} else if (status === 'enc_rekey') {
+				const rekeyChild =
+					(0, WABinary_1.getBinaryNodeChild)(node, 'enc-rekey') ||
+					(0, WABinary_1.getBinaryNodeChild)(node, 'enc_rekey')
+				if (rekeyChild?.content && Buffer.isBuffer(rekeyChild.content)) {
+					try {
+						call.rekeyPayload = (0, Utils_1.decodeE2eRekeyPayload)(rekeyChild.content)
+					} catch (e) {
+						logger.debug({ e }, 'failed to decode enc-rekey payload in standalone call stanza')
+					}
+				}
+			}
+			if (callId && (
+				status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate' ||
+				status === 'reject_do_not_disturb' || status === 'mic_permission_denied' ||
+				status === 'camera_permission_denied' || status === 'remote_busy' || status === 'remote_offline'
+			)) {
 				await callOfferCache.del(callId)
 			}
 			await normalizeCallEventJids(call, node)
@@ -2378,6 +2537,14 @@ const makeMessagesRecvSocket = config => {
 		'accept',
 		'reject',
 		'preaccept',
+		'accept_ack',
+		'enc-rekey',
+		'enc_rekey',
+		'peer_state',
+		'group_info',
+		'video_state',
+		'video_state_ack',
+		'flow_control',
 		'transport',
 		'video',
 		'duration',

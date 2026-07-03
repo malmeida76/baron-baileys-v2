@@ -15,7 +15,9 @@ exports.USYNC_FEATURES = [
 	'encrypt_url',
 	'encrypt_v2',
 	'voip',
-	'multi_agent'
+	'voip_legacy',
+	'multi_agent',
+	'bot_eligible'
 ]
 class USyncFeatureProtocol {
 	/**

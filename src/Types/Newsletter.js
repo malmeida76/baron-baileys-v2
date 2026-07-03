@@ -1,6 +1,26 @@
 'use strict'
 Object.defineProperty(exports, '__esModule', { value: true })
-exports.QueryIds = exports.XWAPaths = void 0
+exports.QueryIds = exports.XWAPaths = exports.NewsletterReactionSetting = exports.NewsletterState = exports.NewsletterRole = void 0
+var NewsletterRole
+;(function (NewsletterRole) {
+	NewsletterRole['SUBSCRIBER'] = 'SUBSCRIBER'
+	NewsletterRole['ADMIN'] = 'ADMIN'
+	NewsletterRole['OWNER'] = 'OWNER'
+	NewsletterRole['GUEST'] = 'GUEST'
+})(NewsletterRole || (exports.NewsletterRole = NewsletterRole = {}))
+var NewsletterState
+;(function (NewsletterState) {
+	NewsletterState['ACTIVE'] = 'ACTIVE'
+	NewsletterState['SUSPENDED'] = 'SUSPENDED'
+	NewsletterState['GEO_SUSPENDED'] = 'GEO_SUSPENDED'
+	NewsletterState['UNKNOWN'] = 'UNKNOWN'
+})(NewsletterState || (exports.NewsletterState = NewsletterState = {}))
+var NewsletterReactionSetting
+;(function (NewsletterReactionSetting) {
+	NewsletterReactionSetting['ALLOWLIST'] = 'ALLOWLIST'
+	NewsletterReactionSetting['BLOCKLIST'] = 'BLOCKLIST'
+	NewsletterReactionSetting['NONE'] = 'NONE'
+})(NewsletterReactionSetting || (exports.NewsletterReactionSetting = NewsletterReactionSetting = {}))
 var XWAPaths
 ;(function (XWAPaths) {
 	XWAPaths['xwa2_newsletter_create'] = 'xwa2_newsletter_create'

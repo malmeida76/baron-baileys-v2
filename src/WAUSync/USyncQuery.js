@@ -5,6 +5,7 @@ const WABinary_1 = require('../WABinary')
 const USyncBotProfileProtocol_1 = require('./Protocols/USyncBotProfileProtocol')
 const USyncLIDProtocol_1 = require('./Protocols/USyncLIDProtocol')
 const USyncBusinessProtocol_1 = require('./Protocols/USyncBusinessProtocol')
+const USyncFeatureProtocol_1 = require('./Protocols/USyncFeatureProtocol')
 const USyncPictureProtocol_1 = require('./Protocols/USyncPictureProtocol')
 const USyncTextStatusProtocol_1 = require('./Protocols/USyncTextStatusProtocol')
 const USyncSidelistProtocol_1 = require('./Protocols/USyncSidelistProtocol')
@@ -50,14 +51,56 @@ class USyncQuery {
 			return nodes.reduce((acc, node) => {
 				const id = node?.attrs.jid
 				if (id) {
+					// G. Blocked-by tracking: a user-level error attribute signals the contact
+					// has blocked us (WA uses 401/403/405 on the <user> node in this case).
+					const userErrorCode = node?.attrs?.error ? parseInt(node.attrs.error, 10) : 0
+					const isBlockedByAttr = userErrorCode === 401 || userErrorCode === 403 || userErrorCode === 405
+
 					const data = Array.isArray(node?.content)
 						? Object.fromEntries(
 								node.content
 									.map(content => {
 										const protocol = content.tag
+
+										// B. Privacy Token: extract per-contact privacy_token and
+										// privacy_mode_ts from <privacy> child elements in usync responses.
+										if (protocol === 'privacy') {
+											const tokenNode = (0, WABinary_1.getBinaryNodeChild)(content, 'token')
+											const modeTsNode = (0, WABinary_1.getBinaryNodeChild)(content, 'mode_ts')
+											// Also accept inline attrs format
+											const tokenVal = tokenNode?.content || content.attrs?.token
+											const modeTsVal =
+												modeTsNode?.content?.toString?.() ||
+												modeTsNode?.attrs?.value ||
+												content.attrs?.mode_ts ||
+												null
+											if (tokenVal) {
+												return [
+													'privacy',
+													{
+														token: Buffer.isBuffer(tokenVal) || tokenVal instanceof Uint8Array
+															? Buffer.from(tokenVal)
+															: tokenVal,
+														modeTs: modeTsVal
+													}
+												]
+											}
+											return ['privacy', null]
+										}
+
 										const parser = protocolMap[protocol]
 										if (parser) {
-											return [protocol, parser(content)]
+											try {
+												return [protocol, parser(content)]
+											} catch (err) {
+												// G. Blocked-by: sub-node parser errors with blocked codes
+												// should surface as isBlockedByContact rather than crashing.
+												const errCode = err?.data ?? err?.output?.payload?.data
+												if (errCode === 401 || errCode === 403 || errCode === 405) {
+													return ['isBlockedByContact', true]
+												}
+												throw err
+											}
 										} else {
 											return [protocol, null]
 										}
@@ -65,6 +108,18 @@ class USyncQuery {
 									.filter(([, b]) => b !== null)
 							)
 						: {}
+
+					// Merge user-attr blocked flag with any parser-detected blocked flag.
+					if (isBlockedByAttr) {
+						data.isBlockedByContact = true
+					}
+
+					// Remap snake_case protocol keys to camelCase contact fields.
+					if ('disappearing_mode' in data) {
+						data.disappearingMode = data.disappearing_mode
+						delete data.disappearing_mode
+					}
+
 					acc.push({ ...data, id })
 				}
 				return acc
@@ -122,6 +177,10 @@ class USyncQuery {
 	}
 	withSidelistProtocol(useLidAddressing) {
 		this.protocols.push(new USyncSidelistProtocol_1.USyncSidelistProtocol(useLidAddressing))
+		return this
+	}
+	withFeatureProtocol(features) {
+		this.protocols.push(new USyncFeatureProtocol_1.USyncFeatureProtocol(features))
 		return this
 	}
 }

@@ -319,6 +319,10 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 						const cert = index_js_1.proto.VerifiedNameCertificate.decode(content)
 						const details = index_js_1.proto.VerifiedNameCertificate.Details.decode(cert.details)
 						fullMessage.verifiedBizName = details.verifiedName
+						// Extract verified level from node attrs (LOW / HIGH / UNKNOWN)
+						if (attrs?.verified_level) {
+							fullMessage.verifiedNameLevel = attrs.verified_level
+						}
 					}
 					if (tag === 'unavailable' && attrs.type === 'view_once') {
 						fullMessage.key.isViewOnce = true // TODO: remove from here and add a STUB TYPE
@@ -351,14 +355,24 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 								})
 								break
 
+							case 'story_reply':
+							case 'feed_reshare':
+							case 'native_flow_response':
 							case 'pkmsg':
-							case 'msg':
+							case 'msg': {
+								const _unicastType =
+									e2eType === 'story_reply' ||
+									e2eType === 'feed_reshare' ||
+									e2eType === 'native_flow_response'
+										? 'msg'
+										: e2eType
 								msgBuffer = await repository.decryptMessage({
 									jid: decryptionJid,
-									type: e2eType,
+									type: _unicastType,
 									ciphertext: content
 								})
 								break
+							}
 							case 'msmsg': //Message Secret Message
 								// null = no bot node (non-streaming), 'full'/'last' = complete response
 								// 'first' = streaming partial response, intentionally skipped
@@ -475,6 +489,57 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 							Object.assign(fullMessage.message, msg)
 						} else {
 							fullMessage.message = msg
+						}
+						// --- story_reply metadata ---
+						if (e2eType === 'story_reply') {
+							fullMessage.storyReply = true
+							// Secondary check: quoted status JID in the decoded message
+							const quotedJid = msg.extendedTextMessage?.contextInfo?.remoteJid
+							if (quotedJid && (0, WABinary_1.isJidStatusBroadcast)(quotedJid)) {
+								fullMessage.storyReply = true
+							}
+						}
+						// --- feed_reshare metadata ---
+						if (e2eType === 'feed_reshare') {
+							fullMessage.feedReshare = true
+						}
+						// --- view_once type from enc attributes ---
+						if (attrs.view_once === 'read' || attrs.view_once === 'write') {
+							fullMessage.viewOnceType = attrs.view_once
+						}
+						// --- XMA message ---
+						if (msg.xmaMessage) {
+							fullMessage.xma = msg.xmaMessage
+							fullMessage.messageType = 'xma'
+						}
+						// --- native_flow_response ---
+						if (e2eType === 'native_flow_response' || msg.nativeFlowResponseMessage) {
+							fullMessage.messageType = 'native_flow_response'
+							if (msg.nativeFlowResponseMessage) {
+								fullMessage.nativeFlowResponse = msg.nativeFlowResponseMessage
+							}
+						}
+						// --- call_permission_request ---
+						if (msg.callPermissionRequestMessage) {
+							fullMessage.messageType = 'call_permission_request'
+							fullMessage.callPermissionRequest = msg.callPermissionRequestMessage
+						}
+						// --- Product / Order / Catalog types ---
+						if (msg.productMessage) {
+							fullMessage.messageType = 'product'
+						} else if (msg.orderMessage) {
+							fullMessage.messageType = 'order'
+						} else if (msg.catalogMessage || msg.listMessage?.catalogType) {
+							fullMessage.messageType = 'catalog'
+						}
+						// --- Sticker flags ---
+						if (msg.stickerMessage) {
+							if (msg.stickerMessage.isAvatar) {
+								fullMessage.isAvatarSticker = true
+							}
+							if (msg.stickerMessage.isAiSticker || msg.stickerMessage.isGenAI) {
+								fullMessage.isAiSticker = true
+							}
 						}
 						// Auto-decode richResponseMessage text so m.msg.text is populated
 						{

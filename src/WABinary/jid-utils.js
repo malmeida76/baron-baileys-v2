@@ -2,6 +2,7 @@
 Object.defineProperty(exports, '__esModule', { value: true })
 exports.transferDevice =
 	exports.jidNormalizedUser =
+	exports.isJidLid =
 	exports.isJidBot =
 	exports.isHostedLidUser =
 	exports.isHostedPnUser =
@@ -23,9 +24,11 @@ exports.transferDevice =
 	exports.PSA_WID =
 	exports.SERVER_JID =
 	exports.OFFICIAL_BIZ_JID =
+	exports.BOT_WHATSAPP_NET =
 	exports.S_WHATSAPP_NET =
 		void 0
 exports.S_WHATSAPP_NET = '@s.whatsapp.net'
+exports.BOT_WHATSAPP_NET = '@bot.whatsapp.net'
 exports.OFFICIAL_BIZ_JID = '16505361212@c.us'
 exports.SERVER_JID = 'server@c.us'
 exports.PSA_WID = '0@c.us'
@@ -35,6 +38,7 @@ var WAJIDDomains
 ;(function (WAJIDDomains) {
 	WAJIDDomains[(WAJIDDomains['WHATSAPP'] = 0)] = 'WHATSAPP'
 	WAJIDDomains[(WAJIDDomains['LID'] = 1)] = 'LID'
+	WAJIDDomains[(WAJIDDomains['BOT'] = 2)] = 'BOT'
 	WAJIDDomains[(WAJIDDomains['HOSTED'] = 128)] = 'HOSTED'
 	WAJIDDomains[(WAJIDDomains['HOSTED_LID'] = 129)] = 'HOSTED_LID'
 })(WAJIDDomains || (exports.WAJIDDomains = WAJIDDomains = {}))
@@ -42,6 +46,8 @@ const getServerFromDomainType = (initialServer, domainType) => {
 	switch (domainType) {
 		case WAJIDDomains.LID:
 			return 'lid'
+		case WAJIDDomains.BOT:
+			return 'bot.whatsapp.net'
 		case WAJIDDomains.HOSTED:
 			return 'hosted'
 		case WAJIDDomains.HOSTED_LID:
@@ -292,6 +298,8 @@ const jidDecode = jid => {
 	let domainType = WAJIDDomains.WHATSAPP
 	if (server === 'lid') {
 		domainType = WAJIDDomains.LID
+	} else if (server === 'bot.whatsapp.net') {
+		domainType = WAJIDDomains.BOT
 	} else if (server === 'hosted') {
 		domainType = WAJIDDomains.HOSTED
 	} else if (server === 'hosted.lid') {
@@ -322,6 +330,9 @@ exports.isInteropUser = isInteropUser
 /** is the jid a LID */
 const isLidUser = jid => jid?.endsWith('@lid')
 exports.isLidUser = isLidUser
+/** is the jid a LID (isJidLid is an alias for isLidUser) */
+const isJidLid = jid => jid?.endsWith('@lid')
+exports.isJidLid = isJidLid
 /** is the jid a broadcast */
 const isJidBroadcast = jid => jid?.endsWith('@broadcast')
 exports.isJidBroadcast = isJidBroadcast
@@ -341,7 +352,10 @@ exports.isHostedPnUser = isHostedPnUser
 const isHostedLidUser = jid => jid?.endsWith('@hosted.lid')
 exports.isHostedLidUser = isHostedLidUser
 const botRegexp = /^1313555\d{4}$|^131655500\d{2}$/
-const isJidBot = jid => jid && botRegexp.test(jid.split('@')[0]) && jid.endsWith('@c.us')
+/** is the jid a bot — covers Meta AI bots (@c.us number pattern) and generic bot server (@bot.whatsapp.net) */
+const isJidBot = jid =>
+	jid &&
+	((botRegexp.test(jid.split('@')[0]) && jid.endsWith('@c.us')) || jid.endsWith('@bot.whatsapp.net'))
 exports.isJidBot = isJidBot
 const jidNormalizedUser = jid => {
 	const result = (0, exports.jidDecode)(jid)

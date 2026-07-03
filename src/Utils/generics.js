@@ -382,11 +382,31 @@ const getCallStatusFromNode = ({ tag, attrs }) => {
 			status = 'offer'
 			break
 		case 'terminate':
-			if (attrs.reason === 'timeout') {
-				status = 'timeout'
-			} else {
-				//fired when accepted/rejected/timeout/caller hangs up
-				status = 'terminate'
+			// Map known end-call reasons to distinct statuses
+			switch (attrs.reason) {
+				case 'timeout':
+				case 'Timeout':
+					status = 'timeout'
+					break
+				case 'RejectDoNotDisturb':
+					status = 'reject_do_not_disturb'
+					break
+				case 'MicPermissionDenied':
+					status = 'mic_permission_denied'
+					break
+				case 'CameraPermissionDenied':
+					status = 'camera_permission_denied'
+					break
+				case 'RemoteBusy':
+					status = 'remote_busy'
+					break
+				case 'RemoteOffline':
+					status = 'remote_offline'
+					break
+				default:
+					// fired when accepted/rejected/caller hangs up
+					status = 'terminate'
+					break
 			}
 			break
 		case 'reject':
@@ -394,6 +414,67 @@ const getCallStatusFromNode = ({ tag, attrs }) => {
 			break
 		case 'accept':
 			status = 'accept'
+			break
+		case 'preaccept':
+			status = 'preaccept'
+			break
+		case 'accept_ack':
+			status = 'accept_ack'
+			break
+		case 'enc-rekey':
+		case 'enc_rekey':
+			status = 'enc_rekey'
+			break
+		case 'peer_state':
+			status = 'peer_state'
+			break
+		case 'group_info':
+			status = 'group_info'
+			break
+		case 'video_state':
+			status = 'video_state'
+			break
+		case 'video_state_ack':
+			status = 'video_state_ack'
+			break
+		case 'flow_control':
+			status = 'flow_control'
+			break
+		case 'relaylatency':
+			status = 'relaylatency'
+			break
+		case 'signal':
+			// Numeric type mapping for <signal type="N"/> child nodes
+			switch (attrs.type) {
+				case '13':
+					status = 'preaccept'
+					break
+				case '15':
+					status = 'video_state'
+					break
+				case '17':
+					status = 'group_info'
+					break
+				case '20':
+					status = 'video_state_ack'
+					break
+				case '21':
+					status = 'flow_control'
+					break
+				case '23':
+					status = 'accept_ack'
+					break
+				case '1002':
+				case '1007':
+					status = 'peer_state'
+					break
+				case '1008':
+					status = 'enc_rekey'
+					break
+				default:
+					status = 'ringing'
+					break
+			}
 			break
 		default:
 			status = 'ringing'

@@ -22,7 +22,8 @@ class USyncDisappearingModeProtocol {
 			const setAt = new Date(+(node?.attrs.t || 0) * 1000)
 			return {
 				duration,
-				setAt
+				setAt,
+				settingTimestamp: setAt
 			}
 		}
 	}

@@ -15,10 +15,10 @@ describe('USyncFeatureProtocol', () => {
 		expect(new USyncFeatureProtocol().name).toBe('feature')
 	})
 
-	test('defaults to all 11 known features', () => {
+	test('defaults to all known features', () => {
 		const p = new USyncFeatureProtocol()
 		expect(p.features).toEqual(USYNC_FEATURES)
-		expect(p.features.length).toBe(11)
+		expect(p.features.length).toBe(USYNC_FEATURES.length)
 	})
 
 	test('getQueryElement builds <feature> with one child per requested feature', () => {

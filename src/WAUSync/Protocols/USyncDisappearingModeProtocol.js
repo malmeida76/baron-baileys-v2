@@ -19,8 +19,8 @@ class USyncDisappearingModeProtocol {
 		if (node.tag === 'disappearing_mode') {
 			;(0, WABinary_1.assertNodeErrorFree)(node)
 			const duration = +node?.attrs.duration
-			const settingTimestamp = +(node?.attrs.t || 0)
-			return { duration, settingTimestamp }
+			const setAt = new Date(+(node?.attrs.t || 0) * 1000)
+			return { duration, setAt }
 		}
 	}
 }

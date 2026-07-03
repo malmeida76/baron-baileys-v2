@@ -317,7 +317,8 @@ describe('getCallStatusFromNode', () => {
 		expect(getCallStatusFromNode({ tag: 'terminate', attrs: { reason: 'timeout' } })).toBe('timeout'))
 	test('reject', () => expect(getCallStatusFromNode({ tag: 'reject', attrs: {} })).toBe('reject'))
 	test('accept', () => expect(getCallStatusFromNode({ tag: 'accept', attrs: {} })).toBe('accept'))
-	test('unknown tag → ringing', () => expect(getCallStatusFromNode({ tag: 'preaccept', attrs: {} })).toBe('ringing'))
+	test('preaccept', () => expect(getCallStatusFromNode({ tag: 'preaccept', attrs: {} })).toBe('preaccept'))
+	test('unknown tag → ringing', () => expect(getCallStatusFromNode({ tag: 'unknown_xyz', attrs: {} })).toBe('ringing'))
 })
 
 describe('jitterDelay', () => {

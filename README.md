@@ -4,6 +4,16 @@ A high-performance WhatsApp Web library built on [Baileys](https://github.com/Wh
 
 ---
 
+## Updated — 2026-07-03
+
+| Area                      | What changed                                                                                                                                                                                                   |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Android / iOS browser** | `makeWASocket({ browser: Browsers.android('Chrome') })` and `Browsers.iOS('Safari')` now set the correct `UserAgent.Platform` (ANDROID/IOS) and skip `webInfo` (mobile connections don't send it).             |
+| **historySyncConfig**     | All `IHistorySyncConfig` fields now populated: `supportManusHistory`, `supportHatchHistory`, `supportInlineContacts`, `supportGuestChat`, `supportGroupHistory`, `supportCallLogHistory`, plus numeric limits. |
+| **MEX dataPath fixes**    | 9 wrong `xwa2_` dataPath strings corrected in `registration.js`, 3 undefined `CLIENT_PERSIST_GQL_IDS` refs fixed in `graphql.js`, 2 WAMO MEX ops added (`wamoUserIdVersion`, `setWamoUserIdVersion`).          |
+| **Code structure**        | `Utils/messages.js` split: read-side functions (content inspection, update*, download) moved to `Utils/message-inspect.js`. Duplicate WAProto require removed from `messages.js` and `decode-wa-message.js`.   |
+| **Tests**                 | 4 previously broken tests fixed: `preaccept` call status, `USyncDisappearingModeProtocol.setAt` (Date), `USYNC_FEATURES` count hardcode removed.                                                               |
+
 ## Updated — 2026-06-30
 
 | Area                       | What changed                                                                                                                                                              |

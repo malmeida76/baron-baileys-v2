@@ -1119,7 +1119,7 @@ const makeChatsSocket = config => {
 	 * @param {import('../WAUSync/USyncQuery').USyncQuery} usyncQuery
 	 */
 	const executeUSyncQuery = async usyncQuery => {
-		const result = await executeUSyncQuery(usyncQuery)
+		const result = await sock.executeUSyncQuery(usyncQuery)
 		if (!result) return result
 
 		// B. Auto-persist privacy tokens found in any usync response.

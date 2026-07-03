@@ -46,7 +46,13 @@ class USyncContactProtocol {
 	parser(node) {
 		if (node.tag === 'contact') {
 			;(0, WABinary_1.assertNodeErrorFree)(node)
-			return node?.attrs?.type === 'in'
+			const inWA = node?.attrs?.type === 'in'
+			const restrictionType = node?.attrs?.stella_addressbook_restriction_type
+			if (restrictionType !== undefined) {
+				// Return object with extra metadata when restriction type is present
+				return { inWA, stellaAddressbookRestrictionType: restrictionType }
+			}
+			return inWA
 		}
 		return false
 	}

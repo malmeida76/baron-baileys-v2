@@ -527,6 +527,10 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 							fullMessage.messageType = 'native_flow_response'
 							if (msg.nativeFlowResponseMessage) {
 								fullMessage.nativeFlowResponse = msg.nativeFlowResponseMessage
+								// SMB quick reply is a business-specific native flow variant
+								if (msg.nativeFlowResponseMessage.name === 'md_smb_quick_reply') {
+									fullMessage.smbQuickReply = true
+								}
 							}
 						}
 						// --- call_permission_request ---
@@ -578,6 +582,69 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 							if (msg.stickerMessage.isAiSticker || msg.stickerMessage.isGenAI) {
 								fullMessage.isAiSticker = true
 							}
+						}
+						// --- StickerPackMessage ---
+						if (msg.stickerPackMessage) {
+							fullMessage.messageType = 'sticker_pack'
+							const sp = msg.stickerPackMessage
+							fullMessage.stickerPack = {
+								id: sp.stickerPackId,
+								name: sp.name,
+								// 0 = FIRST_PARTY, 1 = THIRD_PARTY
+								origin: sp.stickerPackOrigin,
+								size: sp.stickerPackSize,
+								stickers: sp.stickers || [],
+							}
+						}
+						// --- AI media collection metadata from bot context ---
+						if (msg.messageContextInfo?.botMetadata?.aiMediaCollectionMetadata) {
+							fullMessage.aiMediaCollectionMetadata = {
+								collectionId: msg.messageContextInfo.botMetadata.aiMediaCollectionMetadata.collectionId,
+								uploadOrderIndex: msg.messageContextInfo.botMetadata.aiMediaCollectionMetadata.uploadOrderIndex,
+							}
+						}
+						// --- ProtocolMessage: AI media collection coordination ---
+						if (msg.protocolMessage?.aiMediaCollectionMessage) {
+							fullMessage.messageType = 'ai_media_collection'
+							const amc = msg.protocolMessage.aiMediaCollectionMessage
+							fullMessage.aiMediaCollection = {
+								collectionId: amc.collectionId,
+								expectedMediaCount: amc.expectedMediaCount,
+							}
+						}
+						// --- SplitPaymentMessage ---
+						if (msg.splitPaymentMessage) {
+							fullMessage.messageType = 'split_payment'
+							const sp = msg.splitPaymentMessage
+							fullMessage.splitPayment = {
+								splitId: sp.splitId,
+								totalAmount: sp.totalAmount,
+								description: sp.description,
+								requesterJid: sp.requesterJid,
+								participants: (sp.participants || []).map(p => ({
+									jid: p.jid,
+									amount: p.amount,
+									// 0 = PENDING, 1 = PAID
+									status: p.status,
+								})),
+								createdAtMs: sp.createdAtMs ? (sp.createdAtMs.toNumber?.() || sp.createdAtMs) : null,
+							}
+						}
+						// --- PaymentInviteMessage (FBPAY / UPI / NOVI) ---
+						if (msg.paymentInviteMessage) {
+							fullMessage.messageType = 'payment_invite'
+							const SERVICE_TYPE = { 0: 'UNKNOWN', 1: 'FBPAY', 2: 'NOVI', 3: 'UPI' }
+							fullMessage.paymentInvite = {
+								serviceType: SERVICE_TYPE[msg.paymentInviteMessage.serviceType] || 'UNKNOWN',
+								expiry: msg.paymentInviteMessage.expiryTimestamp
+									? (msg.paymentInviteMessage.expiryTimestamp.toNumber?.() || msg.paymentInviteMessage.expiryTimestamp)
+									: null,
+								incentiveEligible: msg.paymentInviteMessage.incentiveEligible || false,
+							}
+						}
+						// --- PaymentReminderMessage ---
+						if (msg.paymentReminderMessage) {
+							fullMessage.messageType = 'payment_reminder'
 						}
 						// --- companion_enc_static ---
 						if (e2eType === 'companion_enc_static') {

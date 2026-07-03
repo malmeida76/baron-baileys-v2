@@ -6,13 +6,18 @@ A high-performance WhatsApp Web library built on [Baileys](https://github.com/Wh
 
 ## Updated — 2026-07-03
 
-| Area                      | What changed                                                                                                                                                                                                   |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Android / iOS browser** | `makeWASocket({ browser: Browsers.android('Chrome') })` and `Browsers.iOS('Safari')` now set the correct `UserAgent.Platform` (ANDROID/IOS) and skip `webInfo` (mobile connections don't send it).             |
-| **historySyncConfig**     | All `IHistorySyncConfig` fields now populated: `supportManusHistory`, `supportHatchHistory`, `supportInlineContacts`, `supportGuestChat`, `supportGroupHistory`, `supportCallLogHistory`, plus numeric limits. |
-| **MEX dataPath fixes**    | 9 wrong `xwa2_` dataPath strings corrected in `registration.js`, 3 undefined `CLIENT_PERSIST_GQL_IDS` refs fixed in `graphql.js`, 2 WAMO MEX ops added (`wamoUserIdVersion`, `setWamoUserIdVersion`).          |
-| **Code structure**        | `Utils/messages.js` split: read-side functions (content inspection, update*, download) moved to `Utils/message-inspect.js`. Duplicate WAProto require removed from `messages.js` and `decode-wa-message.js`.   |
-| **Tests**                 | 4 previously broken tests fixed: `preaccept` call status, `USyncDisappearingModeProtocol.setAt` (Date), `USYNC_FEATURES` count hardcode removed.                                                               |
+| Area                         | What changed                                                                                                                                                                                                   |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Newsletter status recv**   | `CB:status` handler added. Server-pushed newsletter status stanzas (text, media, reaction, revoke) are now parsed: `server_id`, `t`, optional `<meta>` (edit timestamps, `interaction_type`), engagement counters (`views_count`, `responses_count`, per-emoji `reactions`). ACK sent; `newsletter.status` event emitted. |
+| **WAM telemetry**            | `Login` and `WebcSocketConnect` WAM events now fired and flushed after `CB:success`. 30-second periodic flush added; interval cleared on disconnect. (WAM schemas were already complete — this wires the firing.) |
+| **Call offer callKey**       | Incoming `<call><offer>` now Signal-decrypts the `<enc>` child to extract the SRTP session key. `call.callKey` (Buffer) is populated on the emitted `call` event. Falls back silently on decryption failure.  |
+| **Waiting room**             | `<waiting_room_request>` stanza now parsed: `call.status = 'waiting_room_request'`, `call.peerJid` set from stanza attrs. Registered in both `CALL_STATE_TAGS` and the `CB:` listener loop.                   |
+| **Status privacy**           | `sendMessage(jid, content, { statusPrivacy: 'contacts' \| 'allowlist' \| 'denylist' })` appends `<meta status_setting="..." session_scope="status">` to `status@broadcast` sends. Revoke sends (`edit="7"`) are unaffected. |
+| **Android / iOS browser**    | `makeWASocket({ browser: Browsers.android('Chrome') })` and `Browsers.iOS('Safari')` now set the correct `UserAgent.Platform` (ANDROID/IOS) and skip `webInfo` (mobile connections don't send it).             |
+| **historySyncConfig**        | All `IHistorySyncConfig` fields now populated: `supportManusHistory`, `supportHatchHistory`, `supportInlineContacts`, `supportGuestChat`, `supportGroupHistory`, `supportCallLogHistory`, plus numeric limits. |
+| **MEX dataPath fixes**       | 9 wrong `xwa2_` dataPath strings corrected in `registration.js`, 3 undefined `CLIENT_PERSIST_GQL_IDS` refs fixed in `graphql.js`, 2 WAMO MEX ops added (`wamoUserIdVersion`, `setWamoUserIdVersion`).          |
+| **Code structure**           | `Utils/messages.js` split: read-side functions moved to `Utils/message-inspect.js`. Duplicate WAProto require removed.                                                                                          |
+| **Tests**                    | 4 previously broken tests fixed: `preaccept` call status, `USyncDisappearingModeProtocol.setAt` (Date), `USYNC_FEATURES` count hardcode removed.                                                               |
 
 ## Updated — 2026-06-30
 
@@ -138,6 +143,11 @@ See [MEX.md](documentation/MEX.md) for full documentation.
 | Newsletter messages       | Follower invite messages                                                                                                                                                                                                                   |
 | WA-Web protocol port      | Chat-block toggle, call-link waiting room, community sub-group ops, group sharing settings, spam reporting, TOS acceptance, mex group/newsletter events, account dirty/device-sync events — [WA-WEB-PORT.md](documentation/WA-WEB-PORT.md) |
 | Top-level call signalling | Emits `call` for both `<call>`-wrapped and top-level `<offer>`/`<terminate>` stanzas (+ acks them)                                                                                                                                         |
+| Call `callKey`            | Incoming offer `<enc>` Signal-decrypted; `call.callKey` (raw SRTP key bytes) populated on the `call` event                                                                                                                                 |
+| Waiting room              | `call.status = 'waiting_room_request'` + `call.peerJid` when a participant enters a call link's waiting room                                                                                                                               |
+| Newsletter status recv    | `newsletter.status` event for server-pushed `<status>` stanzas: text/media/reaction/revoke, engagement counters, edit timestamps                                                                                                           |
+| Status audience privacy   | `sendMessage(jid, content, { statusPrivacy: 'contacts' \| 'allowlist' \| 'denylist' })` controls who receives a status broadcast                                                                                                           |
+| WAM telemetry             | `Login` and `WebcSocketConnect` WAM events fired after connect; 30s periodic flush to `w:stats` IQ                                                                                                                                         |
 
 ---
 

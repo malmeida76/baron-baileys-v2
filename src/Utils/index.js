@@ -28,6 +28,7 @@ var __exportStar =
 Object.defineProperty(exports, '__esModule', { value: true })
 __exportStar(require('./generics'), exports)
 __exportStar(require('./decode-wa-message'), exports)
+__exportStar(require('./message-inspect'), exports)
 __exportStar(require('./messages'), exports)
 __exportStar(require('./messages-media'), exports)
 __exportStar(require('./validate-connection'), exports)

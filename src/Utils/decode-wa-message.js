@@ -334,6 +334,7 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 					try {
 						const e2eType = tag === 'plaintext' ? 'plaintext' : attrs.type
 						switch (e2eType) {
+							case 'frskmsg':
 							case 'skmsg':
 								msgBuffer = await repository.decryptGroupMessage({
 									group: sender,

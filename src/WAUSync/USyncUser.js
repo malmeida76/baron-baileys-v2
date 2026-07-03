@@ -30,5 +30,9 @@ class USyncUser {
 		this.personaId = personaId
 		return this
 	}
+	withTcToken(tcToken) {
+		this.tcToken = tcToken
+		return this
+	}
 }
 exports.USyncUser = USyncUser

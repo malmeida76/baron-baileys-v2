@@ -103,10 +103,12 @@ exports.DEFAULT_CONNECTION_CONFIG = {
 		return syncType !== index_js_1.proto.HistorySync.HistorySyncType.FULL
 	},
 	shouldIgnoreJid: () => false,
-	// [BETA] Set to true to connect as device 0 (primary) so the WA server routes interop messages here.
-	// Required for receiving messages from BirdyChat/Haiket interop contacts.
-	// Default false keeps companion-device (passive) behaviour for normal multi-device setups.
-	// WARNING: Experimental — interop support is not fully stable and may not work in all cases.
+	// NOT IMPLEMENTED: receiving interop messages (BirdyChat/Haiket) is not yet supported.
+	// The interop bridge only establishes a Signal session with device 0 (the primary phone).
+	// Companion devices (any device != 0) never receive interop messages directly — no fan-out.
+	// masqueradeAsPrimary: true only works when Baileys is registered as the primary (no phone).
+	// With an existing phone account the server rejects it (401) because the noise key is bound
+	// to a companion slot and cannot be re-mapped to device 0 after registration.
 	masqueradeAsPrimary: false,
 	linkPreviewImageThumbnailWidth: 192,
 	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },

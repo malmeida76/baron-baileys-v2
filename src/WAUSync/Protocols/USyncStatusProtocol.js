@@ -12,8 +12,13 @@ class USyncStatusProtocol {
 			attrs: {}
 		}
 	}
-	getUserElement() {
-		return null
+	getUserElement(user) {
+		if (!user?.tcToken) return null
+		return {
+			tag: 'tctoken',
+			attrs: {},
+			content: user.tcToken
+		}
 	}
 	parser(node) {
 		if (node.tag === 'status') {

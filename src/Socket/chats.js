@@ -1577,7 +1577,16 @@ const makeChatsSocket = config => {
 	 * help ensure parity with WA Web
 	 * */
 	const executeInitQueries = async () => {
-		await Promise.all([fetchProps(), fetchBlocklist(), fetchPrivacySettings(), initInterop()])
+		const [, , , , abProps] = await Promise.all([
+			fetchProps(), fetchBlocklist(), fetchPrivacySettings(), initInterop(), fetchABProps()
+		])
+		const INTEROP_FLAGS = ['stella_interop_enabled', 'stella_ios_enabled']
+		for (const flag of INTEROP_FLAGS) {
+			if (flag in abProps) {
+				const enabled = abProps[flag] === 'true' || abProps[flag] === '1'
+				ev.emit('interop.feature-update', { feature: flag, enabled })
+			}
+		}
 	}
 	const upsertMessage = ev.createBufferedFunction(async (msg, type) => {
 		ev.emit('messages.upsert', { messages: [msg], type })

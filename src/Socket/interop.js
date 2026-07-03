@@ -351,14 +351,13 @@ const makeInteropSocket = sock => {
 		} catch (err) {
 			logger.warn({ err }, 'interop: failed to opt-in integrators')
 		}
-		if (!masqueradeAsPrimary) {
-			logger.warn(
-				{ integrators: toOptIn.map(i => i.name) },
-				'interop: opted in but masqueradeAsPrimary is false — messages from interop contacts will NOT be delivered here; set masqueradeAsPrimary: true'
-			)
-		} else {
-			logger.info({ integrators: toOptIn.map(i => i.name) }, 'interop: initialized')
-		}
+		logger.info({ integrators: toOptIn.map(i => i.name) }, 'interop: opted in')
+		logger.warn(
+			{ integrators: toOptIn.map(i => i.name) },
+			'interop: receiving messages from interop contacts (BirdyChat/Haiket) is NOT YET SUPPORTED. ' +
+			'The interop bridge only delivers to device 0 (primary phone) via a single Signal session — ' +
+			'no fan-out to companion devices. Opt-in and sending may work, but inbound messages will not arrive.'
+		)
 		return integrators
 	}
 

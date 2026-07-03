@@ -79056,6 +79056,12 @@ export namespace proto {
 
         /** BackupSignalEnvelope mute */
         mute?: (proto.IBackupMute|null);
+
+        /** BackupSignalEnvelope videoState */
+        videoState?: (proto.IBackupVideoState|null);
+
+        /** BackupSignalEnvelope terminate */
+        terminate?: (proto.IBackupTerminate|null);
     }
 
     /** Represents a BackupSignalEnvelope. */
@@ -79072,6 +79078,12 @@ export namespace proto {
 
         /** BackupSignalEnvelope mute. */
         public mute?: (proto.IBackupMute|null);
+
+        /** BackupSignalEnvelope videoState. */
+        public videoState?: (proto.IBackupVideoState|null);
+
+        /** BackupSignalEnvelope terminate. */
+        public terminate?: (proto.IBackupTerminate|null);
 
         /**
          * Creates a new BackupSignalEnvelope instance using the specified properties.
@@ -79145,6 +79157,224 @@ export namespace proto {
 
         /**
          * Gets the default type url for BackupSignalEnvelope
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
+    /** Properties of a BackupTerminate. */
+    interface IBackupTerminate {
+
+        /** BackupTerminate reason */
+        reason?: (string|null);
+    }
+
+    /** Represents a BackupTerminate. */
+    class BackupTerminate implements IBackupTerminate {
+
+        /**
+         * Constructs a new BackupTerminate.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IBackupTerminate);
+
+        /** BackupTerminate reason. */
+        public reason: string;
+
+        /**
+         * Creates a new BackupTerminate instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns BackupTerminate instance
+         */
+        public static create(properties?: proto.IBackupTerminate): proto.BackupTerminate;
+
+        /**
+         * Encodes the specified BackupTerminate message. Does not implicitly {@link proto.BackupTerminate.verify|verify} messages.
+         * @param message BackupTerminate message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IBackupTerminate, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified BackupTerminate message, length delimited. Does not implicitly {@link proto.BackupTerminate.verify|verify} messages.
+         * @param message BackupTerminate message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IBackupTerminate, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a BackupTerminate message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns BackupTerminate
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BackupTerminate;
+
+        /**
+         * Decodes a BackupTerminate message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns BackupTerminate
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.BackupTerminate;
+
+        /**
+         * Verifies a BackupTerminate message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a BackupTerminate message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns BackupTerminate
+         */
+        public static fromObject(object: { [k: string]: any }): proto.BackupTerminate;
+
+        /**
+         * Creates a plain object from a BackupTerminate message. Also converts values to other types if specified.
+         * @param message BackupTerminate
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.BackupTerminate, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this BackupTerminate to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for BackupTerminate
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
+    /** Properties of a BackupVideoState. */
+    interface IBackupVideoState {
+
+        /** BackupVideoState videoState */
+        videoState?: (number|null);
+
+        /** BackupVideoState transactionId */
+        transactionId?: (number|null);
+
+        /** BackupVideoState deviceOrientation */
+        deviceOrientation?: (number|null);
+
+        /** BackupVideoState codecScheme */
+        codecScheme?: (number|null);
+
+        /** BackupVideoState vidDecCapability */
+        vidDecCapability?: (string|null);
+    }
+
+    /** Represents a BackupVideoState. */
+    class BackupVideoState implements IBackupVideoState {
+
+        /**
+         * Constructs a new BackupVideoState.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IBackupVideoState);
+
+        /** BackupVideoState videoState. */
+        public videoState: number;
+
+        /** BackupVideoState transactionId. */
+        public transactionId: number;
+
+        /** BackupVideoState deviceOrientation. */
+        public deviceOrientation: number;
+
+        /** BackupVideoState codecScheme. */
+        public codecScheme: number;
+
+        /** BackupVideoState vidDecCapability. */
+        public vidDecCapability: string;
+
+        /**
+         * Creates a new BackupVideoState instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns BackupVideoState instance
+         */
+        public static create(properties?: proto.IBackupVideoState): proto.BackupVideoState;
+
+        /**
+         * Encodes the specified BackupVideoState message. Does not implicitly {@link proto.BackupVideoState.verify|verify} messages.
+         * @param message BackupVideoState message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IBackupVideoState, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified BackupVideoState message, length delimited. Does not implicitly {@link proto.BackupVideoState.verify|verify} messages.
+         * @param message BackupVideoState message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IBackupVideoState, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a BackupVideoState message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns BackupVideoState
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BackupVideoState;
+
+        /**
+         * Decodes a BackupVideoState message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns BackupVideoState
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.BackupVideoState;
+
+        /**
+         * Verifies a BackupVideoState message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a BackupVideoState message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns BackupVideoState
+         */
+        public static fromObject(object: { [k: string]: any }): proto.BackupVideoState;
+
+        /**
+         * Creates a plain object from a BackupVideoState message. Also converts values to other types if specified.
+         * @param message BackupVideoState
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.BackupVideoState, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this BackupVideoState to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for BackupVideoState
          * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
          * @returns The default type url
          */

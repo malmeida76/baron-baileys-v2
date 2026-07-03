@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1042490225
+/// WhatsApp Version: 2.3000.1042596003
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -6912,6 +6912,22 @@ message BackupRelayLatencyReport {
 message BackupSignalEnvelope {
     BackupRelayLatencyReport relay_latency = 1;
     BackupMute mute = 2;
+    BackupVideoState video_state = 3;
+    BackupTerminate terminate = 4;
+}
+
+// original: wa.voip.BackupTerminate
+message BackupTerminate {
+    string reason = 1;
+}
+
+// original: wa.voip.BackupVideoState
+message BackupVideoState {
+    int32 video_state = 1;
+    int32 transaction_id = 2;
+    int32 device_orientation = 3;
+    int32 codec_scheme = 4;
+    string vid_dec_capability = 5;
 }
 
 // original: wa.voip.BwaInfo

@@ -141,12 +141,24 @@ const makeChatsSocket = config => {
 				privacyNode?.attrs?.syncd_clear_chat_delete_chat_enabled === 'true' ||
 				(0, WABinary_1.getBinaryNodeChild)(privacyNode, 'syncd_clear_chat')?.attrs?.delete_chat_enabled === 'true'
 
+			// A. Syncd anti-tampering fatal-exception gate.
+			const syncdAntiTamperingEnabled =
+				privacyNode?.attrs?.syncd_anti_tampering_fatal_exception_enabled === 'true' ||
+				(0, WABinary_1.getBinaryNodeChild)(privacyNode, 'syncd_anti_tampering')?.attrs?.fatal_exception_enabled === 'true'
+
+			// B. Syncd key-index rotation gate.
+			const keyRotationEnabled =
+				privacyNode?.attrs?.syncd_key_rotation_enabled === 'true' ||
+				(0, WABinary_1.getBinaryNodeChild)(privacyNode, 'syncd_key_rotation')?.attrs?.enabled === 'true'
+
 			// Emit combined settings update so consumers can react without parsing raw creds.
 			ev.emit('settings.update', {
 				onlinePrivacy,
 				enhancedBlockEnabled,
 				mdPrivacyV2,
-				syncdClearChatDeleteChatEnabled
+				syncdClearChatDeleteChatEnabled,
+				...(syncdAntiTamperingEnabled ? { syncdAntiTamperingEnabled: true } : {}),
+				keyRotationEnabled
 			})
 
 			// Persist extended privacy flags in credentials.
@@ -155,7 +167,9 @@ const makeChatsSocket = config => {
 					onlinePrivacy,
 					enhancedBlockEnabled,
 					mdPrivacyV2,
-					syncdClearChatDeleteChatEnabled
+					syncdClearChatDeleteChatEnabled,
+					syncdAntiTamperingEnabled,
+					keyRotationEnabled
 				}
 			})
 		}
@@ -676,9 +690,35 @@ const makeChatsSocket = config => {
 							attrs: { jid }
 						}
 					]
+				},
+				{
+					tag: 'verified_name',
+					attrs: { xmlns: 'w:biz:verified_name' }
 				}
 			]
 		})
+		// Parse verified_name certificate if present in the response
+		const verifiedNameNode = (0, WABinary_1.getBinaryNodeChild)(results, 'verified_name')
+		let verifiedNameCert
+		if (verifiedNameNode) {
+			const certNode = (0, WABinary_1.getBinaryNodeChild)(verifiedNameNode, 'certificate')
+			if (certNode) {
+				const detailsNode = (0, WABinary_1.getBinaryNodeChild)(certNode, 'details')
+				const localizedNames = (0, WABinary_1.getBinaryNodeChildren)(certNode, 'localized_name').map(n => ({
+					lg: n.attrs?.lg,
+					lc: n.attrs?.lc,
+					verifiedName: n.attrs?.verified_name || n.content?.toString()
+				}))
+				verifiedNameCert = {
+					certSerial: certNode.attrs?.serial ? +certNode.attrs.serial : undefined,
+					issuer: certNode.attrs?.issuer,
+					details: {
+						verifiedName: detailsNode?.attrs?.verified_name || detailsNode?.content?.toString(),
+						localizedNames
+					}
+				}
+			}
+		}
 		const profileNode = (0, WABinary_1.getBinaryNodeChild)(results, 'business_profile')
 		const profiles = (0, WABinary_1.getBinaryNodeChild)(profileNode, 'profile')
 		if (profiles) {
@@ -743,7 +783,8 @@ const makeChatsSocket = config => {
 				cartEnabled,
 				webCartEnabled,
 				webCartOnOff,
-				commerceExperience
+				commerceExperience,
+				verifiedNameCert
 			}
 		}
 	}
@@ -1787,6 +1828,24 @@ const makeChatsSocket = config => {
 		}
 		if ('md_privacy_v2' in abProps) {
 			abCredsUpdate.mdPrivacyV2 = abProps['md_privacy_v2'] === 'true' || abProps['md_privacy_v2'] === '1'
+		}
+		// Persist media feature-flag AB props so upload/download paths can gate on them.
+		const MEDIA_AB_PROPS = [
+			'hd_image_dual_upload',
+			'hd_video_dual_upload',
+			'hevc_video_dual_upload',
+			'partial_pjpeg_enabled',
+			'multi_scan_pjpeg',
+			'media_poll'
+		]
+		const mediaAbProps = {}
+		for (const prop of MEDIA_AB_PROPS) {
+			if (prop in abProps) {
+				mediaAbProps[prop] = abProps[prop] === 'true' || abProps[prop] === '1'
+			}
+		}
+		if (Object.keys(mediaAbProps).length) {
+			abCredsUpdate.mediaAbProps = { ...(authState.creds.mediaAbProps || {}), ...mediaAbProps }
 		}
 		if (Object.keys(abCredsUpdate).length) {
 			ev.emit('creds.update', abCredsUpdate)

@@ -48,11 +48,24 @@ class USyncFeatureProtocol {
 				errorText: errorNode.attrs?.text
 			}
 		}
+		const CAMEL_MAP = {
+			encrypt_v2: 'encryptV2',
+			voip_legacy: 'voipLegacy',
+			multi_agent: 'multiAgent',
+			bot_eligible: 'botEligible',
+			encrypt_blist: 'encryptBlist',
+			encrypt_contact: 'encryptContact',
+			encrypt_group_gen2: 'encryptGroupGen2',
+			encrypt_image: 'encryptImage',
+			encrypt_location: 'encryptLocation',
+			encrypt_url: 'encryptUrl'
+		}
 		const features = {}
 		const children = Array.isArray(node.content) ? node.content : []
 		for (const child of children) {
 			if (child?.attrs && child.attrs.value !== undefined) {
-				features[child.tag] = child.attrs.value
+				const key = CAMEL_MAP[child.tag] || child.tag
+				features[key] = child.attrs.value
 			}
 		}
 		return features

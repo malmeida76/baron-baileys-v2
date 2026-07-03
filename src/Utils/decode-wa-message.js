@@ -358,12 +358,22 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 							case 'story_reply':
 							case 'feed_reshare':
 							case 'native_flow_response':
+							case 'companion_enc_static':
+							case 'avatar_sticker':
+							case 'genai_sticker':
+							case 'account_authentication_request':
+							case 'motion_video':
 							case 'pkmsg':
 							case 'msg': {
 								const _unicastType =
 									e2eType === 'story_reply' ||
 									e2eType === 'feed_reshare' ||
-									e2eType === 'native_flow_response'
+									e2eType === 'native_flow_response' ||
+									e2eType === 'companion_enc_static' ||
+									e2eType === 'avatar_sticker' ||
+									e2eType === 'genai_sticker' ||
+									e2eType === 'account_authentication_request' ||
+									e2eType === 'motion_video'
 										? 'msg'
 										: e2eType
 								msgBuffer = await repository.decryptMessage({
@@ -532,6 +542,34 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 						} else if (msg.catalogMessage || msg.listMessage?.catalogType) {
 							fullMessage.messageType = 'catalog'
 						}
+						// --- Payment types ---
+						if (msg.paymentMessage) {
+							fullMessage.messageType = 'payment'
+							const pm = msg.paymentMessage
+							fullMessage.paymentInfo = {
+								amount: pm.amount1000 ? pm.amount1000 / 1000 : null,
+								currency: pm.currencyCodeIso4217 || null,
+								status: pm.status || null,
+								transactionTimestamp: pm.transactionTimestamp ? pm.transactionTimestamp.toNumber?.() || pm.transactionTimestamp : null,
+								type: pm.type || null,
+								method: pm.paymentMethod || null,
+								futureProofed: pm.futureProofed || false,
+							}
+						}
+						if (msg.requestPaymentMessage) {
+							fullMessage.messageType = 'request_payment'
+							fullMessage.paymentRequest = {
+								amount: msg.requestPaymentMessage.amount || null,
+								currency: msg.requestPaymentMessage.currencyCodeIso4217 || null,
+								expiry: msg.requestPaymentMessage.expiryTimestamp || null,
+							}
+						}
+						if (msg.sendPaymentMessage) {
+							fullMessage.messageType = 'send_payment'
+						}
+						if (msg.cancelPaymentRequestMessage) {
+							fullMessage.messageType = 'cancel_payment'
+						}
 						// --- Sticker flags ---
 						if (msg.stickerMessage) {
 							if (msg.stickerMessage.isAvatar) {
@@ -540,6 +578,23 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 							if (msg.stickerMessage.isAiSticker || msg.stickerMessage.isGenAI) {
 								fullMessage.isAiSticker = true
 							}
+						}
+						// --- companion_enc_static ---
+						if (e2eType === 'companion_enc_static') {
+							fullMessage.companionEncStatic = true
+						}
+						// --- avatar_sticker / genai_sticker enc type ---
+						if (e2eType === 'avatar_sticker' || e2eType === 'genai_sticker') {
+							fullMessage.stickerType = e2eType
+						}
+						// --- account_authentication_request ---
+						if (e2eType === 'account_authentication_request' || msg.accountAuthRequestMessage) {
+							fullMessage.messageType = 'account_auth_request'
+						}
+						// --- motion_video ---
+						if (e2eType === 'motion_video' || (msg.videoMessage && msg.videoMessage.motionVideo)) {
+							fullMessage.messageType = 'motion_video'
+							fullMessage.motionVideo = true
 						}
 						// Auto-decode richResponseMessage text so m.msg.text is populated
 						{

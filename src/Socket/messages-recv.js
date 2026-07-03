@@ -1810,8 +1810,8 @@ const makeMessagesRecvSocket = config => {
 			return
 		}
 		// D. Receipt aggregation
-		// Server sent a batched-receipt (receipt_agg attr) — emit dedicated event instead of
-		// processing each ID individually so callers can handle the batch atomically
+		// Server sent a batched-receipt (receipt_agg attr) — emit dedicated event AND fall through
+		// to the normal status-update pipeline so all IDs in the batch get their status updated.
 		if (attrs.receipt_agg) {
 			ev.emit('receipt.batched', {
 				ids,
@@ -1821,8 +1821,7 @@ const makeMessagesRecvSocket = config => {
 				t: attrs.t,
 				receiptAgg: attrs.receipt_agg
 			})
-			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack batched receipt'))
-			return
+			// Do not return — let all IDs be processed by the normal receipt path below.
 		}
 		try {
 			await Promise.all([

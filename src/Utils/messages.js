@@ -231,6 +231,9 @@ const assertColor = async color => {
 }
 const prepareWAMessageMedia = async (message, options) => {
 	const logger = options.logger
+	// AB props for feature-flagged media paths (passed via options.mediaAbProps).
+	const mediaAbProps = options.mediaAbProps || null
+	const getMediaProp = propName => (0, messages_media_1.getMediaProp)(mediaAbProps, propName)
 	let mediaType
 	for (const key of Defaults_1.MEDIA_KEYS) {
 		if (key in message) {
@@ -245,6 +248,19 @@ const prepareWAMessageMedia = async (message, options) => {
 		media: message[mediaType]
 	}
 	delete uploadData[mediaType]
+
+	// Feature B: HEVC video — when hevc_video_dual_upload is enabled, allow HEVC mimetype
+	// through without forcing it to mp4. When the prop is absent we leave the existing
+	// mimetype as-is (defaults are set further below).
+	if (mediaType === 'video' && uploadData.mimetype) {
+		const isHevc = uploadData.mimetype.includes('hevc') || uploadData.mimetype.includes('x-matroska')
+		if (isHevc && !getMediaProp('hevc_video_dual_upload')) {
+			// Prop not enabled: normalise to mp4 so receivers can decode it.
+			uploadData.mimetype = MIMETYPE_MAP['video']
+		}
+		// If the prop is enabled we leave the caller-supplied HEVC mimetype intact.
+	}
+
 	// check if cacheable + generate cache key
 	const cacheableKey =
 		typeof uploadData.media === 'object' &&
@@ -375,6 +391,27 @@ const prepareWAMessageMedia = async (message, options) => {
 			logger?.warn('failed to remove tmp file')
 		}
 	})
+
+	// Feature A: HD image dual upload — set mediaHd flag when prop is enabled and caller
+	// explicitly requests HD quality via uploadData.hd === true.
+	const hdImageEnabled = mediaType === 'image' && getMediaProp('hd_image_dual_upload') && !!uploadData.hd
+	const hdVideoEnabled = mediaType === 'video' && getMediaProp('hd_video_dual_upload') && !!uploadData.hd
+	if (hdImageEnabled || hdVideoEnabled) {
+		uploadData.mediaHd = true
+		logger?.debug({ mediaType }, 'HD dual upload enabled, setting mediaHd flag')
+	}
+
+	// Feature C: Motion photo — propagate motionPhoto field for image messages when present.
+	// The caller sets message.motionPhoto = true (or a Buffer for the motion data).
+	if (mediaType === 'image' && uploadData.motionPhoto != null) {
+		// Keep motionPhoto in uploadData; it will be spread into the proto below.
+		// If it is a boolean we coerce to 1/0 for the proto field (uint32 in WA proto).
+		if (typeof uploadData.motionPhoto === 'boolean') {
+			uploadData.motionPhoto = uploadData.motionPhoto ? 1 : 0
+		}
+		logger?.debug('motion photo field set on image message')
+	}
+
 	const obj = WAProto_1.proto.Message.fromObject({
 		[`${mediaType}Message`]: MessageTypeProto[mediaType].fromObject({
 			url: mediaUrl,
@@ -780,7 +817,12 @@ const generateWAMessageContent = async (message, options) => {
 			...(message.poll.hideParticipantName !== undefined
 				? { hideParticipantName: !!message.poll.hideParticipantName }
 				: {}),
-			...(message.poll.allowAddOption !== undefined ? { allowAddOption: !!message.poll.allowAddOption } : {})
+			...(message.poll.allowAddOption !== undefined ? { allowAddOption: !!message.poll.allowAddOption } : {}),
+			// Feature D: media_poll — allow poll messages to carry a media attachment when the
+			// AB prop is enabled and the caller supplies message.poll.mediaAttachment.
+			...((0, messages_media_1.getMediaProp)(options.mediaAbProps, 'media_poll') && message.poll.mediaPoll != null
+				? { mediaPoll: !!message.poll.mediaPoll }
+				: {})
 		}
 		if (message.poll.version === 6 || message.poll.v6) {
 			m.pollCreationMessageV6 = pollCreationMessage

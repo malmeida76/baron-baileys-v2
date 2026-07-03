@@ -549,7 +549,27 @@ const extractCommunityMetadata = result => {
 		}),
 		ephemeralDuration: eph ? +eph : undefined,
 		addressingMode: (0, WABinary_1.getBinaryNodeChildString)(community, 'addressing_mode'),
-		linkLimit
+		linkLimit,
+		suspendAppealStatus: community.attrs.suspend_appeal_status || community.attrs.appeal_status || undefined,
+		allowMemberSuggestM3: community.attrs.parent_group_allow_member_suggest_existing_m3 === 'true'
+			? true
+			: community.attrs.parent_group_allow_member_suggest_existing_m3 === 'false'
+				? false
+				: undefined,
+		allowMemberSuggestM3ForAdmin: community.attrs.parent_group_allow_member_suggest_existing_m3_for_admin === 'true'
+			? true
+			: community.attrs.parent_group_allow_member_suggest_existing_m3_for_admin === 'false'
+				? false
+				: undefined,
+		subgroupPollInterval: community.attrs.improve_subgroup_activation_subgroup_poll_interval
+			? Number(community.attrs.improve_subgroup_activation_subgroup_poll_interval)
+			: undefined,
+		isGeneralSubgroup: community.attrs.general_subgroup != null
+			? community.attrs.general_subgroup === 'true' || community.attrs.general_subgroup === true
+			: undefined,
+		isHiddenSubgroup: community.attrs.hidden_subgroup != null
+			? community.attrs.hidden_subgroup === 'true' || community.attrs.hidden_subgroup === true
+			: undefined
 	}
 	return metadata
 }

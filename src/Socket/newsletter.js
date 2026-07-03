@@ -48,10 +48,23 @@ const mapReactionSetting = raw => {
  * Handles both flat objects (direct API result) and objects that nest additional
  * data under thread_metadata / viewer_metadata.
  */
+const mergeDsaCountries = (a, b) => {
+	if (!a && !b) return null
+	const merged = [
+		...(Array.isArray(a) ? a : a ? [a] : []),
+		...(Array.isArray(b) ? b : b ? [b] : [])
+	]
+	return merged.length ? [...new Set(merged)] : null
+}
+
 const enrichNewsletterMetadata = raw => {
 	if (!raw || typeof raw !== 'object') return raw
 	const thread = raw.thread_metadata || {}
 	const viewer = raw.viewer_metadata || {}
+	const dsaCountries = mergeDsaCountries(
+		thread.dsa_eligibility_countries ?? raw.dsa_eligibility_countries ?? null,
+		thread.dsa_eligible_countries ?? raw.dsa_eligible_countries ?? null
+	)
 	return {
 		...raw,
 		role: mapNewsletterRole(viewer.role ?? raw.role),
@@ -60,17 +73,24 @@ const enrichNewsletterMetadata = raw => {
 			thread.reaction_codes ?? thread.reaction_setting ??
 			raw.reaction_codes ?? raw.reaction_setting
 		),
-		dsaEligibilityCountries: thread.dsa_eligibility_countries ?? raw.dsa_eligibility_countries ?? null,
+		dsaEligibilityCountries: dsaCountries,
 		dsaDecision: thread.dsa_decision ?? raw.dsa_decision ?? null,
 		pinnedMessage:
 			thread.pinned_message_server_id ?? thread.pinned_message_id ??
 			raw.pinned_message_server_id ?? raw.pinned_message_id ?? null,
 		hasQuestionsFeature: !!(thread.has_questions_feature ?? raw.has_questions_feature ?? false),
+		hasMusicFeature: !!(thread.has_music_feature ?? thread.music_enabled ?? raw.has_music_feature ?? raw.music_enabled ?? false),
+		viewsCount: thread.views_count != null ? parseInt(thread.views_count, 10) : raw.views_count != null ? parseInt(raw.views_count, 10) : null,
+		subscriberCount: thread.subscriber_count != null ? parseInt(thread.subscriber_count, 10) : raw.subscriber_count != null ? parseInt(raw.subscriber_count, 10) : null,
 	}
 }
 
 const parseNewsletterCreateResponse = response => {
 	const { id, thread_metadata: thread, viewer_metadata: viewer } = response
+	const dsaCountries = mergeDsaCountries(
+		thread.dsa_eligibility_countries ?? null,
+		thread.dsa_eligible_countries ?? null
+	)
 	const base = {
 		id: id,
 		owner: undefined,
@@ -88,10 +108,11 @@ const parseNewsletterCreateResponse = response => {
 		role: mapNewsletterRole(viewer.role),
 		newsletterState: mapNewsletterState(thread.state),
 		reactionSetting: mapReactionSetting(thread.reaction_codes ?? thread.reaction_setting),
-		dsaEligibilityCountries: thread.dsa_eligibility_countries ?? null,
+		dsaEligibilityCountries: dsaCountries,
 		dsaDecision: thread.dsa_decision ?? null,
 		pinnedMessage: thread.pinned_message_server_id ?? thread.pinned_message_id ?? null,
 		hasQuestionsFeature: !!(thread.has_questions_feature ?? false),
+		hasMusicFeature: !!(thread.has_music_feature ?? thread.music_enabled ?? false),
 	}
 	return base
 }

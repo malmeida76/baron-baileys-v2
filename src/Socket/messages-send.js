@@ -1586,6 +1586,7 @@ const makeMessagesSocket = config => {
 								mediaHandle = up.handle
 								return up
 							},
+							mediaAbProps: authState.creds.mediaAbProps,
 							...options
 						}
 					)
@@ -1607,6 +1608,7 @@ const makeMessagesSocket = config => {
 								mediaHandle = up.handle
 								return up
 							},
+							mediaAbProps: authState.creds.mediaAbProps,
 							...options
 						}
 					)
@@ -1968,6 +1970,8 @@ const makeMessagesSocket = config => {
 					mediaCache: config.mediaCache,
 					options: config.options,
 					messageId: (0, Utils_1.generateMessageIDV2)(sock.user?.id),
+					// Pass persisted media AB props so feature-flagged upload/download paths work.
+					mediaAbProps: authState.creds.mediaAbProps,
 					...options
 				})
 				if (!mediaHandle) {

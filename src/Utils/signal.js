@@ -53,9 +53,11 @@ const generateOrGetPreKeys = (creds, range) => {
 	}
 }
 exports.generateOrGetPreKeys = generateOrGetPreKeys
-const xmppSignedPreKey = key => ({
+// 0x05 = X25519/Curve25519 (standard Signal), 0x2a = Kyber-1024 (PQXDH)
+const KEY_CIPHER_SUITE_CURVE25519 = 0x05
+const xmppSignedPreKey = (key, cipherSuite) => ({
 	tag: 'skey',
-	attrs: {},
+	attrs: cipherSuite !== undefined ? { key_cipher_suite: cipherSuite } : {},
 	content: [
 		{ tag: 'id', attrs: {}, content: (0, generics_1.encodeBigEndian)(key.keyId, 3) },
 		{ tag: 'value', attrs: {}, content: key.keyPair.public },
@@ -63,9 +65,9 @@ const xmppSignedPreKey = key => ({
 	]
 })
 exports.xmppSignedPreKey = xmppSignedPreKey
-const xmppPreKey = (pair, id) => ({
+const xmppPreKey = (pair, id, cipherSuite) => ({
 	tag: 'key',
-	attrs: {},
+	attrs: cipherSuite !== undefined ? { key_cipher_suite: cipherSuite } : {},
 	content: [
 		{ tag: 'id', attrs: {}, content: (0, generics_1.encodeBigEndian)(id, 3) },
 		{ tag: 'value', attrs: {}, content: pair.public }
@@ -178,8 +180,8 @@ const getNextPreKeysNode = async (state, count) => {
 			{ tag: 'registration', attrs: {}, content: (0, generics_1.encodeBigEndian)(creds.registrationId) },
 			{ tag: 'type', attrs: {}, content: Defaults_1.KEY_BUNDLE_TYPE },
 			{ tag: 'identity', attrs: {}, content: creds.signedIdentityKey.public },
-			{ tag: 'list', attrs: {}, content: Object.keys(preKeys).map(k => (0, exports.xmppPreKey)(preKeys[+k], +k)) },
-			(0, exports.xmppSignedPreKey)(creds.signedPreKey)
+			{ tag: 'list', attrs: {}, content: Object.keys(preKeys).map(k => (0, exports.xmppPreKey)(preKeys[+k], +k, KEY_CIPHER_SUITE_CURVE25519)) },
+			(0, exports.xmppSignedPreKey)(creds.signedPreKey, KEY_CIPHER_SUITE_CURVE25519)
 		]
 	}
 	return { update, node }

@@ -340,7 +340,9 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 					let msgBuffer
 					const decryptionJid = await (0, exports.getDecryptionJid)(author, repository)
 					if (tag !== 'plaintext') {
-						// TODO: Handle hosted devices
+						if ((0, WABinary_1.isHostedPnUser)(decryptionJid) || (0, WABinary_1.isHostedLidUser)(decryptionJid)) {
+							fullMessage.isHostedDevice = true
+						}
 						await storeMappingFromEnvelope(stanza, author, repository, decryptionJid, logger)
 					}
 					try {
@@ -363,6 +365,7 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 							case 'genai_sticker':
 							case 'account_authentication_request':
 							case 'motion_video':
+							case 'motion_photo':
 							case 'pkmsg':
 							case 'msg': {
 								const _unicastType =
@@ -373,7 +376,8 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 									e2eType === 'avatar_sticker' ||
 									e2eType === 'genai_sticker' ||
 									e2eType === 'account_authentication_request' ||
-									e2eType === 'motion_video'
+									e2eType === 'motion_video' ||
+									e2eType === 'motion_photo'
 										? 'msg'
 										: e2eType
 								msgBuffer = await repository.decryptMessage({
@@ -662,6 +666,15 @@ const decryptMessageNode = (stanza, meId, meLid, repository, logger) => {
 						if (e2eType === 'motion_video' || (msg.videoMessage && msg.videoMessage.motionVideo)) {
 							fullMessage.messageType = 'motion_video'
 							fullMessage.motionVideo = true
+						}
+						// --- motion_photo ---
+						if (e2eType === 'motion_photo' || (msg.imageMessage && msg.imageMessage.motionPhoto)) {
+							fullMessage.messageType = 'motion_photo'
+							fullMessage.motionPhoto = true
+						}
+						// --- non-E2EE plaintext (newsletter / system channel messages) ---
+						if (e2eType === 'plaintext') {
+							fullMessage.isNonE2EE = true
 						}
 						// Auto-decode richResponseMessage text so m.msg.text is populated
 						{

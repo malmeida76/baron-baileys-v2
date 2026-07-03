@@ -382,19 +382,6 @@ const makeCommunitiesSocket = config => {
 			)
 			return results.attrs.from
 		}),
-		communityGetInviteInfo: async code => {
-			const results = await communityQuery('@g.us', 'get', [{ tag: 'invite', attrs: { code } }])
-			return (0, exports.extractCommunityMetadata)(results)
-		},
-		communityToggleEphemeral: async (jid, ephemeralExpiration) => {
-			const content = ephemeralExpiration
-				? { tag: 'ephemeral', attrs: { expiration: ephemeralExpiration.toString() } }
-				: { tag: 'not_ephemeral', attrs: {} }
-			await communityQuery(jid, 'set', [content])
-		},
-		communitySettingUpdate: async (jid, setting) => {
-			await communityQuery(jid, 'set', [{ tag: setting, attrs: {} }])
-		},
 		communityMemberAddMode: async (jid, mode) => {
 			await communityQuery(jid, 'set', [{ tag: 'member_add_mode', attrs: {}, content: mode }])
 		},
@@ -458,30 +445,36 @@ const makeCommunitiesSocket = config => {
 		 * Fetch total participant count of a community via MEX.
 		 * @param {string} jid - Community JID
 		 */
-		communityParticipantCount: jid =>
-			mexQuery(
+		communityParticipantCount: async jid => {
+			const result = await mexQuery(
 				{ group_input: { group_id: jid } },
 				COMMUNITY_MEX_QUERY_IDS.QUERY_PARTICIPANT_COUNT,
 				'xwa2_group_query_by_id'
-			),
+			)
+			return result?.participant_count ?? result?.participantCount ?? result?.count ?? result
+		},
 
 		/**
 		 * Fetch subgroups of a community via MEX (includes hidden_group, join approval state, etc.)
 		 * @param {string} jid - Community JID
 		 */
-		communitySubgroupsMex: jid =>
-			mexQuery({ group_input: { group_id: jid } }, COMMUNITY_MEX_QUERY_IDS.QUERY_SUBGROUPS, 'xwa2_group_query_by_id'),
+		communitySubgroupsMex: async jid => {
+			const result = await mexQuery({ group_input: { group_id: jid } }, COMMUNITY_MEX_QUERY_IDS.QUERY_SUBGROUPS, 'xwa2_group_query_by_id')
+			return result?.subgroups ?? result?.linked_groups ?? result?.sub_groups ?? result
+		},
 
 		/**
 		 * Fetch participant count of a specific subgroup within a community.
 		 * @param {string} subgroupJid - Subgroup JID
 		 */
-		communitySubgroupParticipantCount: subgroupJid =>
-			mexQuery(
+		communitySubgroupParticipantCount: async subgroupJid => {
+			const result = await mexQuery(
 				{ group_input: { group_id: subgroupJid } },
 				COMMUNITY_MEX_QUERY_IDS.QUERY_SUBGROUP_PARTICIPANT_COUNT,
 				'xwa2_group_query_by_id'
-			),
+			)
+			return result?.participant_count ?? result?.participantCount ?? result?.count ?? result
+		},
 
 		/**
 		 * Transfer community ownership to a new owner via MEX.
@@ -489,15 +482,17 @@ const makeCommunitiesSocket = config => {
 		 * @param {string} communityJid - Community JID
 		 * @param {string} newOwnerJid - JID of the new owner
 		 */
-		communityTransferOwnershipMex: (communityJid, newOwnerJid) =>
-			mexQuery(
+		communityTransferOwnershipMex: async (communityJid, newOwnerJid) => {
+			const result = await mexQuery(
 				{
 					group_id: communityJid,
 					role_updates: [{ user_jid: newOwnerJid, new_role: 'SUPERADMIN_MEMBER' }]
 				},
 				COMMUNITY_MEX_QUERY_IDS.UPDATE_OWNER,
 				'xwa2_community_update_owner'
-			),
+			)
+			return result?.status === 'ok' || !!result?.success || !!result
+		},
 
 		COMMUNITY_MEX_QUERY_IDS
 	}
@@ -542,9 +537,10 @@ const extractCommunityMetadata = result => {
 		memberAddMode,
 		participants: (0, WABinary_1.getBinaryNodeChildren)(community, 'participant').map(({ attrs }) => {
 			return {
-				// TODO: IMPLEMENT THE PN/LID FIELDS HERE!!
 				id: attrs.jid,
-				admin: attrs.type || null
+				admin: attrs.type || null,
+				...(attrs.lid ? { lid: attrs.lid } : {}),
+				...(attrs.pn ? { pn: attrs.pn } : {})
 			}
 		}),
 		ephemeralDuration: eph ? +eph : undefined,

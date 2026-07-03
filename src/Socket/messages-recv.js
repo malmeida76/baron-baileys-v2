@@ -1224,15 +1224,17 @@ const makeMessagesRecvSocket = config => {
 		if (childTag === 'peer_device_presence') {
 			const jid = attrs.jid || (0, WABinary_1.jidNormalizedUser)(node.attrs.from)
 			const presence = attrs.type === 'unavailable' ? 'unavailable' : 'available'
-			logger.debug({ jid, presence }, '[interop] peer_device_presence')
-			ev.emit('presence.update', { id: jid, presences: { [jid]: { lastKnownPresence: presence } } })
+			const isIosInterop = !!authState.creds.interopIosEnabled
+			logger.debug({ jid, presence, isIosInterop }, '[interop] peer_device_presence')
+			ev.emit('presence.update', { id: jid, presences: { [jid]: { lastKnownPresence: presence } }, isIosInterop })
 			return
 		}
 
 		// fbid:thread / fbid:devices — Meta thread or device list association
 		if (childTag === 'fbid_thread' || childTag === 'fbid_devices') {
-			logger.debug({ childTag, attrs, from: node.attrs.from }, '[interop] fbid association update')
-			ev.emit('interop.fbid-update', { type: childTag, jid: node.attrs.from, attrs })
+			const isIosInterop = !!authState.creds.interopIosEnabled
+			logger.debug({ childTag, attrs, from: node.attrs.from, isIosInterop }, '[interop] fbid association update')
+			ev.emit('interop.fbid-update', { type: childTag, jid: node.attrs.from, attrs, isIosInterop })
 			return
 		}
 
@@ -2345,7 +2347,8 @@ const makeMessagesRecvSocket = config => {
 	// of them (otherwise WhatsApp keeps redelivering). The <call> path above is untouched.
 	const CALL_STATE_TAGS = new Set([
 		'offer', 'offer_notice', 'terminate', 'accept', 'reject', 'preaccept', 'accept_ack',
-		'enc-rekey', 'enc_rekey', 'peer_state', 'group_info', 'video_state', 'video_state_ack', 'flow_control'
+		'enc-rekey', 'enc_rekey', 'peer_state', 'group_info', 'video_state', 'video_state_ack', 'flow_control',
+		'mute_v2'
 	])
 	const handleStandaloneCallStanza = async node => {
 		try {
@@ -2404,6 +2407,18 @@ const makeMessagesRecvSocket = config => {
 					} catch (e) {
 						logger.debug({ e }, 'failed to decode enc-rekey payload in standalone call stanza')
 					}
+				}
+			} else if (status === 'mute') {
+				const muteChild = (0, WABinary_1.getBinaryNodeChild)(node, 'mute_v2')
+				const muteAttrs = muteChild?.attrs || node.attrs
+				const rawMuted = muteAttrs?.muted ?? muteAttrs?.audio_muted
+				call.muted = rawMuted === 'true' || rawMuted === '1' || rawMuted === true
+				const audioChild = muteChild
+					? (0, WABinary_1.getBinaryNodeChild)(muteChild, 'audio')
+					: (0, WABinary_1.getBinaryNodeChild)(node, 'audio')
+				if (audioChild?.attrs?.muted !== undefined) {
+					const am = audioChild.attrs.muted
+					call.muted = am === 'true' || am === '1' || am === true
 				}
 			}
 			if (callId && (

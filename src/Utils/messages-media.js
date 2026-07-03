@@ -542,6 +542,37 @@ const downloadContentFromMessage = async ({ mediaKey, directPath, url }, type, o
 }
 exports.downloadContentFromMessage = downloadContentFromMessage
 /**
+ * Fetch a specific decrypted byte range of an encrypted media message.
+ * Returns a Transform stream (same contract as downloadContentFromMessage).
+ * Relies on the Range-request support already present in downloadEncryptedContent.
+ */
+const downloadMediaChunk = (message, type, startByte, endByte, opts = {}) =>
+	downloadContentFromMessage(message, type, { ...opts, startByte, endByte })
+exports.downloadMediaChunk = downloadMediaChunk
+/**
+ * Async generator that yields successive decrypted chunk streams for large media.
+ * Uses HTTP Range requests so the CDN only sends the requested slice each time.
+ * Useful for progressive playback: the caller can begin rendering before the full
+ * file is downloaded.
+ *
+ * @param {object} message - The message content object with mediaKey, directPath/url, fileLength
+ * @param {string} type    - WA media type ('image', 'video', 'audio', 'document', ...)
+ * @param {object} opts    - Passed through to downloadContentFromMessage; add chunkSize (bytes) to override
+ */
+async function* streamMediaChunks(message, type, opts = {}) {
+	const chunkSize = opts.chunkSize || 2 * 1024 * 1024
+	const fileLength = message.fileLength
+	if (!fileLength || fileLength <= chunkSize) {
+		yield downloadContentFromMessage(message, type, opts)
+		return
+	}
+	for (let offset = 0; offset < fileLength; offset += chunkSize) {
+		const endByte = Math.min(offset + chunkSize - 1, fileLength - 1)
+		yield downloadContentFromMessage(message, type, { ...opts, startByte: offset, endByte })
+	}
+}
+exports.streamMediaChunks = streamMediaChunks
+/**
  * Decrypts and downloads an AES256-CBC encrypted file given the keys.
  * Assumes the SHA256 of the plaintext is appended to the end of the ciphertext
  * */

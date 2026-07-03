@@ -1808,8 +1808,15 @@ const makeChatsSocket = config => {
 	 * help ensure parity with WA Web
 	 * */
 	const executeInitQueries = async () => {
-		const [, , , , abProps] = await Promise.all([
-			fetchProps(), fetchBlocklist(), fetchPrivacySettings(), initInterop(), fetchABProps()
+		// Gate initInterop on previously-persisted flag: undefined = first connection (always run);
+		// false = account has interop disabled, skip the TOS/opt-in flow on reconnect.
+		const shouldInitInterop = authState.creds.interopEnabled !== false
+		const [, , , abProps] = await Promise.all([
+			fetchProps(),
+			fetchBlocklist(),
+			fetchPrivacySettings(),
+			fetchABProps(),
+			...(shouldInitInterop ? [initInterop()] : [])
 		])
 		const INTEROP_FLAGS = ['stella_interop_enabled', 'stella_ios_enabled']
 		for (const flag of INTEROP_FLAGS) {

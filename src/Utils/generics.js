@@ -443,6 +443,9 @@ const getCallStatusFromNode = ({ tag, attrs }) => {
 		case 'relaylatency':
 			status = 'relaylatency'
 			break
+		case 'mute_v2':
+			status = 'mute'
+			break
 		case 'signal':
 			// Numeric type mapping for <signal type="N"/> child nodes
 			switch (attrs.type) {
@@ -470,6 +473,9 @@ const getCallStatusFromNode = ({ tag, attrs }) => {
 					break
 				case '1008':
 					status = 'enc_rekey'
+					break
+				case '12':
+					status = 'mute'
 					break
 				default:
 					status = 'ringing'

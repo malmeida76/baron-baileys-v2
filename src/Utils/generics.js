@@ -446,6 +446,9 @@ const getCallStatusFromNode = ({ tag, attrs }) => {
 		case 'mute_v2':
 			status = 'mute'
 			break
+		case 'waiting_room_request':
+			status = 'waiting_room_request'
+			break
 		case 'signal':
 			// Numeric type mapping for <signal type="N"/> child nodes
 			switch (attrs.type) {

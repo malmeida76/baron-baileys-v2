@@ -2368,7 +2368,25 @@ const makeMessagesRecvSocket = config => {
 				// Extract negotiated codecs from offer child nodes
 				if (audioNode?.attrs?.codec) call.audioCodec = audioNode.attrs.codec
 				if (videoNode?.attrs?.codec) call.videoCodec = videoNode.attrs.codec
+				// Decrypt Signal-encrypted callKey from <enc> child
+				const encNode = (0, WABinary_1.getBinaryNodeChild)(infoChild, 'enc')
+				if (encNode?.content) {
+					try {
+						const encType = encNode.attrs.type || 'msg'
+						const ciphertext = Buffer.isBuffer(encNode.content) ? encNode.content : Buffer.from(encNode.content)
+						const decrypted = await signalRepository.decryptMessage({ jid: attrs.from, type: encType, ciphertext })
+						const unpadded = (0, Utils_1.unpadRandomMax16)(decrypted)
+						const callMsg = index_js_1.proto.Message.decode(unpadded)
+						if (callMsg?.call?.callKey?.length) {
+							call.callKey = Buffer.from(callMsg.call.callKey)
+						}
+					} catch (e) {
+						logger.debug({ e }, 'failed to decrypt call enc')
+					}
+				}
 				await callOfferCache.set(call.id, call)
+			} else if (status === 'waiting_room_request') {
+				call.peerJid = infoChild.attrs.from || infoChild.attrs['peer-jid'] || infoChild.attrs['user-jid']
 			}
 			const existingCall = await callOfferCache.get(call.id)
 			// use existing call info to populate this event
@@ -2422,7 +2440,7 @@ const makeMessagesRecvSocket = config => {
 	const CALL_STATE_TAGS = new Set([
 		'offer', 'offer_notice', 'terminate', 'accept', 'reject', 'preaccept', 'accept_ack',
 		'enc-rekey', 'enc_rekey', 'peer_state', 'group_info', 'video_state', 'video_state_ack', 'flow_control',
-		'mute_v2'
+		'mute_v2', 'waiting_room_request'
 	])
 	const handleStandaloneCallStanza = async node => {
 		try {
@@ -2640,7 +2658,8 @@ const makeMessagesRecvSocket = config => {
 		'lobby',
 		'heartbeat',
 		'relaylatency',
-		'link_query'
+		'link_query',
+		'waiting_room_request'
 	]) {
 		ws.on('CB:' + callTag, node => {
 			nodelogger(node)

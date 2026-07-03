@@ -530,6 +530,7 @@ const makeMessagesSocket = config => {
 			useUserDevicesCache,
 			useCachedGroupMetadata,
 			statusJidList,
+			statusPrivacy,
 			AI = false
 		}
 	) => {
@@ -1016,6 +1017,14 @@ const makeMessagesSocket = config => {
 				stanza.content.push({
 					tag: 'multicast',
 					attrs: {}
+				})
+			}
+
+			// Status audience privacy: add <meta status_setting="..."> for all non-revoke sends
+			if (isStatus && statusPrivacy && !additionalAttributes?.edit) {
+				stanza.content.push({
+					tag: 'meta',
+					attrs: { status_setting: statusPrivacy, session_scope: 'status' }
 				})
 			}
 
@@ -2037,6 +2046,7 @@ const makeMessagesSocket = config => {
 					useCachedGroupMetadata: options.useCachedGroupMetadata,
 					additionalAttributes,
 					statusJidList: options.statusJidList,
+					statusPrivacy: options.statusPrivacy,
 					additionalNodes,
 					AI: options.ai || false
 				})

@@ -1009,7 +1009,8 @@ const makeSocket = config => {
 		onWhatsApp,
 		fetchAccountReachoutTimelock,
 		fetchNewChatMessageCap,
-		logger
+		logger,
+		masqueradeAsPrimary: config.masqueradeAsPrimary
 	}
 }
 exports.makeSocket = makeSocket

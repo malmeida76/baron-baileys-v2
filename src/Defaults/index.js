@@ -103,6 +103,10 @@ exports.DEFAULT_CONNECTION_CONFIG = {
 		return syncType !== index_js_1.proto.HistorySync.HistorySyncType.FULL
 	},
 	shouldIgnoreJid: () => false,
+	// [BETA] Set to true to connect as device 0 (primary) so the WA server routes interop messages here.
+	// Required for receiving messages from BirdyChat/Haiket interop contacts.
+	// Default false keeps companion-device (passive) behaviour for normal multi-device setups.
+	// WARNING: Experimental — interop support is not fully stable and may not work in all cases.
 	masqueradeAsPrimary: false,
 	linkPreviewImageThumbnailWidth: 192,
 	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },

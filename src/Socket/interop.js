@@ -40,7 +40,7 @@ const TOS_RESULT_ACCEPTED = '160'
 const INTEROP_BATCH_MAX = 256
 
 const makeInteropSocket = sock => {
-	const { query, generateMessageTag, logger, signalRepository } = sock
+	const { query, generateMessageTag, logger, signalRepository, masqueradeAsPrimary } = sock
 
 	const mexQuery = (variables, queryId, dataPath) =>
 		executeWMexQuery(variables, queryId, dataPath, query, generateMessageTag)
@@ -351,7 +351,14 @@ const makeInteropSocket = sock => {
 		} catch (err) {
 			logger.warn({ err }, 'interop: failed to opt-in integrators')
 		}
-		logger.info({ integrators: toOptIn.map(i => i.name) }, 'interop: initialized')
+		if (!masqueradeAsPrimary) {
+			logger.warn(
+				{ integrators: toOptIn.map(i => i.name) },
+				'interop: opted in but masqueradeAsPrimary is false — messages from interop contacts will NOT be delivered here; set masqueradeAsPrimary: true'
+			)
+		} else {
+			logger.info({ integrators: toOptIn.map(i => i.name) }, 'interop: initialized')
+		}
 		return integrators
 	}
 

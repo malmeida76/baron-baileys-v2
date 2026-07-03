@@ -14,17 +14,33 @@ const WABinary_1 = require('../WABinary')
 const crypto_2 = require('./crypto')
 const generics_1 = require('./generics')
 const signal_1 = require('./signal')
+const MOBILE_PLATFORMS = new Set(['Android', 'iOS'])
 const getUserAgent = config => {
+	const os = config.browser[0]
+	let platform, device, osVersion
+	if (os === 'Android') {
+		platform = index_js_1.proto.ClientPayload.UserAgent.Platform.ANDROID
+		device = 'Android'
+		osVersion = config.browser[2] || '15.0.0'
+	} else if (os === 'iOS') {
+		platform = index_js_1.proto.ClientPayload.UserAgent.Platform.IOS
+		device = 'iPhone'
+		osVersion = config.browser[2] || '18.0'
+	} else {
+		platform = index_js_1.proto.ClientPayload.UserAgent.Platform.WEB
+		device = 'Desktop'
+		osVersion = '0.1'
+	}
 	return {
 		appVersion: {
 			primary: config.version[0],
 			secondary: config.version[1],
 			tertiary: config.version[2]
 		},
-		platform: index_js_1.proto.ClientPayload.UserAgent.Platform.WEB,
-		releaseChannel: index_js_1.proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
-		osVersion: '0.1',
-		device: 'Desktop',
+		platform,
+		releaseChannel: index_js_1.proto.ClientPayload.UserAgent.ReleaseChannel.DEBUG,
+		osVersion,
+		device,
 		osBuildNumber: '0.1',
 		localeLanguageIso6391: 'en',
 		mnc: '000',
@@ -34,7 +50,9 @@ const getUserAgent = config => {
 }
 const PLATFORM_MAP = {
 	'Mac OS': index_js_1.proto.ClientPayload.WebInfo.WebSubPlatform.DARWIN,
-	Windows: index_js_1.proto.ClientPayload.WebInfo.WebSubPlatform.WIN32
+	Windows: index_js_1.proto.ClientPayload.WebInfo.WebSubPlatform.WIN32,
+	Android: index_js_1.proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER,
+	iOS: index_js_1.proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
 }
 const getWebInfo = config => {
 	let webSubPlatform = index_js_1.proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
@@ -49,7 +67,9 @@ const getClientPayload = config => {
 		connectReason: index_js_1.proto.ClientPayload.ConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config)
 	}
-	payload.webInfo = getWebInfo(config)
+	if (!MOBILE_PLATFORMS.has(config.browser[0])) {
+		payload.webInfo = getWebInfo(config)
+	}
 	return payload
 }
 const generateLoginNode = (userJid, config, creds) => {
@@ -91,10 +111,12 @@ const generateRegistrationNode = ({ registrationId, signedPreKey, signedIdentity
 		platformType: getPlatformType(config.browser[1]),
 		requireFullSync: config.syncFullHistory,
 		historySyncConfig: {
+			fullSyncDaysLimit: undefined,
+			fullSyncSizeMbLimit: undefined,
 			storageQuotaMb: 10240,
 			inlineInitialPayloadInE2EeMsg: true,
 			recentSyncDaysLimit: undefined,
-			supportCallLogHistory: false,
+			supportCallLogHistory: true,
 			supportBotUserAgentChatHistory: true,
 			supportCagReactionsAndPolls: true,
 			supportBizHostedMsg: true,
@@ -103,9 +125,16 @@ const generateRegistrationNode = ({ registrationId, signedPreKey, signedIdentity
 			supportFbidBotChatHistory: true,
 			supportAddOnHistorySyncMigration: undefined,
 			supportMessageAssociation: true,
-			supportGroupHistory: false,
+			supportGroupHistory: true,
 			onDemandReady: undefined,
-			supportGuestChat: undefined
+			supportGuestChat: true,
+			completeOnDemandReady: undefined,
+			thumbnailSyncDaysLimit: undefined,
+			initialSyncMaxMessagesPerChat: undefined,
+			supportManusHistory: true,
+			supportHatchHistory: true,
+			supportedBotChannelFbids: undefined,
+			supportInlineContacts: true
 		},
 		version: {
 			primary: 10,

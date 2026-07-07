@@ -13,10 +13,14 @@ const mapNewsletterRole = raw => {
 	if (!raw) return Types_1.NewsletterRole.GUEST
 	const upper = String(raw).toUpperCase()
 	switch (upper) {
-		case 'OWNER': return Types_1.NewsletterRole.OWNER
-		case 'ADMIN': return Types_1.NewsletterRole.ADMIN
-		case 'SUBSCRIBER': return Types_1.NewsletterRole.SUBSCRIBER
-		default: return Types_1.NewsletterRole.GUEST
+		case 'OWNER':
+			return Types_1.NewsletterRole.OWNER
+		case 'ADMIN':
+			return Types_1.NewsletterRole.ADMIN
+		case 'SUBSCRIBER':
+			return Types_1.NewsletterRole.SUBSCRIBER
+		default:
+			return Types_1.NewsletterRole.GUEST
 	}
 }
 
@@ -25,10 +29,14 @@ const mapNewsletterState = raw => {
 	if (!raw) return Types_1.NewsletterState.UNKNOWN
 	const upper = String(raw).toUpperCase()
 	switch (upper) {
-		case 'ACTIVE': return Types_1.NewsletterState.ACTIVE
-		case 'SUSPENDED': return Types_1.NewsletterState.SUSPENDED
-		case 'GEO_SUSPENDED': return Types_1.NewsletterState.GEO_SUSPENDED
-		default: return Types_1.NewsletterState.UNKNOWN
+		case 'ACTIVE':
+			return Types_1.NewsletterState.ACTIVE
+		case 'SUSPENDED':
+			return Types_1.NewsletterState.SUSPENDED
+		case 'GEO_SUSPENDED':
+			return Types_1.NewsletterState.GEO_SUSPENDED
+		default:
+			return Types_1.NewsletterState.UNKNOWN
 	}
 }
 
@@ -37,9 +45,12 @@ const mapReactionSetting = raw => {
 	if (!raw) return Types_1.NewsletterReactionSetting.NONE
 	const upper = String(raw).toUpperCase()
 	switch (upper) {
-		case 'ALLOWLIST': return Types_1.NewsletterReactionSetting.ALLOWLIST
-		case 'BLOCKLIST': return Types_1.NewsletterReactionSetting.BLOCKLIST
-		default: return Types_1.NewsletterReactionSetting.NONE
+		case 'ALLOWLIST':
+			return Types_1.NewsletterReactionSetting.ALLOWLIST
+		case 'BLOCKLIST':
+			return Types_1.NewsletterReactionSetting.BLOCKLIST
+		default:
+			return Types_1.NewsletterReactionSetting.NONE
 	}
 }
 
@@ -50,10 +61,7 @@ const mapReactionSetting = raw => {
  */
 const mergeDsaCountries = (a, b) => {
 	if (!a && !b) return null
-	const merged = [
-		...(Array.isArray(a) ? a : a ? [a] : []),
-		...(Array.isArray(b) ? b : b ? [b] : [])
-	]
+	const merged = [...(Array.isArray(a) ? a : a ? [a] : []), ...(Array.isArray(b) ? b : b ? [b] : [])]
 	return merged.length ? [...new Set(merged)] : null
 }
 
@@ -70,18 +78,36 @@ const enrichNewsletterMetadata = raw => {
 		role: mapNewsletterRole(viewer.role ?? raw.role),
 		newsletterState: mapNewsletterState(raw.state ?? thread.state),
 		reactionSetting: mapReactionSetting(
-			thread.reaction_codes ?? thread.reaction_setting ??
-			raw.reaction_codes ?? raw.reaction_setting
+			thread.reaction_codes ?? thread.reaction_setting ?? raw.reaction_codes ?? raw.reaction_setting
 		),
 		dsaEligibilityCountries: dsaCountries,
 		dsaDecision: thread.dsa_decision ?? raw.dsa_decision ?? null,
 		pinnedMessage:
-			thread.pinned_message_server_id ?? thread.pinned_message_id ??
-			raw.pinned_message_server_id ?? raw.pinned_message_id ?? null,
+			thread.pinned_message_server_id ??
+			thread.pinned_message_id ??
+			raw.pinned_message_server_id ??
+			raw.pinned_message_id ??
+			null,
 		hasQuestionsFeature: !!(thread.has_questions_feature ?? raw.has_questions_feature ?? false),
-		hasMusicFeature: !!(thread.has_music_feature ?? thread.music_enabled ?? raw.has_music_feature ?? raw.music_enabled ?? false),
-		viewsCount: thread.views_count != null ? parseInt(thread.views_count, 10) : raw.views_count != null ? parseInt(raw.views_count, 10) : null,
-		subscriberCount: thread.subscriber_count != null ? parseInt(thread.subscriber_count, 10) : raw.subscriber_count != null ? parseInt(raw.subscriber_count, 10) : null,
+		hasMusicFeature: !!(
+			thread.has_music_feature ??
+			thread.music_enabled ??
+			raw.has_music_feature ??
+			raw.music_enabled ??
+			false
+		),
+		viewsCount:
+			thread.views_count != null
+				? parseInt(thread.views_count, 10)
+				: raw.views_count != null
+					? parseInt(raw.views_count, 10)
+					: null,
+		subscriberCount:
+			thread.subscriber_count != null
+				? parseInt(thread.subscriber_count, 10)
+				: raw.subscriber_count != null
+					? parseInt(raw.subscriber_count, 10)
+					: null
 	}
 }
 
@@ -112,7 +138,7 @@ const parseNewsletterCreateResponse = response => {
 		dsaDecision: thread.dsa_decision ?? null,
 		pinnedMessage: thread.pinned_message_server_id ?? thread.pinned_message_id ?? null,
 		hasQuestionsFeature: !!(thread.has_questions_feature ?? false),
-		hasMusicFeature: !!(thread.has_music_feature ?? thread.music_enabled ?? false),
+		hasMusicFeature: !!(thread.has_music_feature ?? thread.music_enabled ?? false)
 	}
 	return base
 }
@@ -130,7 +156,7 @@ const parseNewsletterMetadata = result => {
 }
 const makeNewsletterSocket = config => {
 	const sock = (0, aigroups_1.makeAIGroupsSocket)(config)
-	const { query, generateMessageTag } = sock
+	const { query, generateMessageTag, sendNode } = sock
 	const executeWMexQuery = (variables, queryId, dataPath) => {
 		return (0, mex_1.executeWMexQuery)(variables, queryId, dataPath, query, generateMessageTag)
 	}
@@ -263,6 +289,31 @@ const makeNewsletterSocket = config => {
 			})
 			return result
 		},
+		/**
+		 * Find the numeric server_id for a newsletter message by its WhatsApp message ID.
+		 * Fetches the last `limit` messages and scans attrs for a matching message_id.
+		 */
+		newsletterGetServerId: async (jid, messageId, limit = 50) => {
+			const result = await query({
+				tag: 'iq',
+				attrs: {
+					id: generateMessageTag(),
+					type: 'get',
+					xmlns: 'newsletter',
+					to: jid
+				},
+				content: [{ tag: 'message_updates', attrs: { count: String(limit) } }]
+			})
+			if (!result) return null
+			const updatesNode = (0, WABinary_1.getBinaryNodeChild)(result, 'message_updates')
+			const messages = (0, WABinary_1.getBinaryNodeChildren)(updatesNode ?? result, 'message')
+			for (const msg of messages) {
+				if (msg.attrs.message_id === messageId || msg.attrs.id === messageId) {
+					return msg.attrs.server_id ? +msg.attrs.server_id : null
+				}
+			}
+			return null
+		},
 		subscribeNewsletterUpdates: async jid => {
 			const result = await query({
 				tag: 'iq',
@@ -383,6 +434,24 @@ const makeNewsletterSocket = config => {
 				]
 			})
 			return result
+		},
+		/**
+		 * Revoke (delete) a message posted to a newsletter.
+		 * @param {string} jid - Newsletter JID
+		 * @param {number|string} serverId - server_id of the message to revoke
+		 */
+		newsletterRevokeMessage: async (jid, serverId) => {
+			await sendNode({
+				tag: 'message',
+				attrs: {
+					to: jid,
+					type: 'text',
+					edit: '7',
+					server_id: String(serverId),
+					id: generateMessageTag()
+				},
+				content: []
+			})
 		},
 		/**
 		 * Pin a newsletter message
@@ -525,7 +594,11 @@ const makeNewsletterSocket = config => {
 			const { limit = 20, interests = null, sortField = 'SUBSCRIBER_COUNT', sortOrder = 'DESC' } = options
 			const variables = { limit, sort_field: sortField, sort_order: sortOrder }
 			if (interests?.length) variables.interests = interests
-			return executeWMexQuery(variables, Types_1.QueryIds.DIRECTORY_LIST, Types_1.XWAPaths.xwa2_newsletters_directory_list)
+			return executeWMexQuery(
+				variables,
+				Types_1.QueryIds.DIRECTORY_LIST,
+				Types_1.XWAPaths.xwa2_newsletters_directory_list
+			)
 		},
 		/**
 		 * Search the newsletter directory.
@@ -670,7 +743,11 @@ const makeNewsletterSocket = config => {
 		 * @param {string} jid - Newsletter JID
 		 */
 		newsletterEnableWamo: async jid => {
-			return executeWMexQuery({ newsletter_id: jid }, Types_1.QueryIds.WAMO_ENABLE_SUB, 'xwa2_newsletter_wamo_enable_sub')
+			return executeWMexQuery(
+				{ newsletter_id: jid },
+				Types_1.QueryIds.WAMO_ENABLE_SUB,
+				'xwa2_newsletter_wamo_enable_sub'
+			)
 		},
 		/**
 		 * Disable Wamo (paid subscription) for a newsletter.
@@ -702,44 +779,72 @@ const makeNewsletterSocket = config => {
 		 * @param {string} jid - Newsletter JID
 		 */
 		wamoAfsAgeCollection: async jid =>
-			executeWMexQuery({ newsletter_id: jid }, Types_1.QueryIds.WAMO_AFS_AGE_COLLECTION, Types_1.XWAPaths.xwa2_wamo_afs_age_collection),
+			executeWMexQuery(
+				{ newsletter_id: jid },
+				Types_1.QueryIds.WAMO_AFS_AGE_COLLECTION,
+				Types_1.XWAPaths.xwa2_wamo_afs_age_collection
+			),
 		/**
 		 * Fetch Wamo asset collection (images/assets for Wamo UI).
 		 * @param {string} jid - Newsletter JID
 		 */
 		wamoAssetCollection: async jid =>
-			executeWMexQuery({ newsletter_id: jid }, Types_1.QueryIds.WAMO_ASSET_COLLECTION, Types_1.XWAPaths.xwa2_wamo_asset_collection),
+			executeWMexQuery(
+				{ newsletter_id: jid },
+				Types_1.QueryIds.WAMO_ASSET_COLLECTION,
+				Types_1.XWAPaths.xwa2_wamo_asset_collection
+			),
 		/**
 		 * Fetch a Wamo ad-hoc notice by ID.
 		 * @param {string} noticeId - Notice ID to fetch
 		 */
 		wamoFetchAdhocNotice: async noticeId =>
-			executeWMexQuery({ notice_id: noticeId }, Types_1.QueryIds.WAMO_FETCH_ADHOC_NOTICE, Types_1.XWAPaths.xwa2_wamo_fetch_adhoc_notice_by_id),
+			executeWMexQuery(
+				{ notice_id: noticeId },
+				Types_1.QueryIds.WAMO_FETCH_ADHOC_NOTICE,
+				Types_1.XWAPaths.xwa2_wamo_fetch_adhoc_notice_by_id
+			),
 		/**
 		 * Fetch the Wamo identity token for a newsletter.
 		 * @param {string} jid - Newsletter JID
 		 */
 		wamoFetchIdentityToken: async jid =>
-			executeWMexQuery({ newsletter_id: jid }, Types_1.QueryIds.WAMO_FETCH_IDENTITY_TOKEN, Types_1.XWAPaths.xwa2_wamo_fetch_identity_token),
+			executeWMexQuery(
+				{ newsletter_id: jid },
+				Types_1.QueryIds.WAMO_FETCH_IDENTITY_TOKEN,
+				Types_1.XWAPaths.xwa2_wamo_fetch_identity_token
+			),
 		/**
 		 * Get Wamo subscription compliance info.
 		 * @param {string} jid - Newsletter JID
 		 */
 		wamoSubComplianceInfo: async jid =>
-			executeWMexQuery({ newsletter_id: jid }, Types_1.QueryIds.WAMO_SUB_COMPLIANCE_INFO, Types_1.XWAPaths.xwa2_wamo_sub_get_compliance_info),
+			executeWMexQuery(
+				{ newsletter_id: jid },
+				Types_1.QueryIds.WAMO_SUB_COMPLIANCE_INFO,
+				Types_1.XWAPaths.xwa2_wamo_sub_get_compliance_info
+			),
 		/**
 		 * Get the Wamo user ID version for a newsletter.
 		 * @param {string} jid - Newsletter JID
 		 */
 		wamoUserIdVersion: async jid =>
-			executeWMexQuery({ newsletter_id: jid }, Types_1.QueryIds.WAMO_USER_ID_VERSION, Types_1.XWAPaths.xwa2_wamo_user_id_version),
+			executeWMexQuery(
+				{ newsletter_id: jid },
+				Types_1.QueryIds.WAMO_USER_ID_VERSION,
+				Types_1.XWAPaths.xwa2_wamo_user_id_version
+			),
 		/**
 		 * Set the Wamo user ID version for a newsletter.
 		 * @param {string} jid - Newsletter JID
 		 * @param {number} version - Version to set
 		 */
 		wamoSetUserIdVersion: async (jid, version) =>
-			executeWMexQuery({ newsletter_id: jid, version }, Types_1.QueryIds.WAMO_SET_USER_ID_VERSION, Types_1.XWAPaths.xwa2_wamo_set_user_id_version),
+			executeWMexQuery(
+				{ newsletter_id: jid, version },
+				Types_1.QueryIds.WAMO_SET_USER_ID_VERSION,
+				Types_1.XWAPaths.xwa2_wamo_set_user_id_version
+			),
 		/**
 		 * Leave a newsletter (unsubscribe).
 		 * @param {string} jid - Newsletter JID
@@ -762,7 +867,11 @@ const makeNewsletterSocket = config => {
 		 * @param {string} jid - Newsletter JID
 		 */
 		newsletterEnforcements: async jid =>
-			executeWMexQuery({ newsletter_id: jid }, Types_1.QueryIds.ENFORCEMENTS, Types_1.XWAPaths.xwa2_newsletter_enforcements),
+			executeWMexQuery(
+				{ newsletter_id: jid },
+				Types_1.QueryIds.ENFORCEMENTS,
+				Types_1.XWAPaths.xwa2_newsletter_enforcements
+			),
 		/**
 		 * Fetch user reports for a newsletter (admin action).
 		 * @param {string} jid - Newsletter JID
@@ -789,7 +898,11 @@ const makeNewsletterSocket = config => {
 		 * @param {string} url - URL to preview
 		 */
 		newsletterLinkPreviewCheck: async url =>
-			executeWMexQuery({ url }, Types_1.QueryIds.LINK_PREVIEW_CHECK, Types_1.XWAPaths.xwa2_newsletter_link_preview_check),
+			executeWMexQuery(
+				{ url },
+				Types_1.QueryIds.LINK_PREVIEW_CHECK,
+				Types_1.XWAPaths.xwa2_newsletter_link_preview_check
+			),
 		/**
 		 * Update newsletter verification status (admin/platform action).
 		 * @param {string} jid - Newsletter JID

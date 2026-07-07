@@ -59,7 +59,9 @@ const makeMessagesSocket = config => {
 			try {
 				meta = cachedGroupMetadata ? await cachedGroupMetadata(gjid) : null
 				if (!meta) meta = await groupMetadata(gjid)
-			} catch { continue }
+			} catch {
+				continue
+			}
 			for (const p of meta?.participants || []) {
 				const id = p.id
 				if (!id || seen.has(id)) continue
@@ -2007,6 +2009,9 @@ const makeMessagesSocket = config => {
 						additionalAttributes.edit = '8'
 					} else {
 						additionalAttributes.edit = '7'
+					}
+					if (content.delete?.server_id) {
+						additionalAttributes.server_id = String(content.delete.server_id)
 					}
 				} else if (isEditMsg) {
 					additionalAttributes.edit = '1'

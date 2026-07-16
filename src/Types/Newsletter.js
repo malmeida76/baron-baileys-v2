@@ -1,6 +1,11 @@
 'use strict'
 Object.defineProperty(exports, '__esModule', { value: true })
-exports.QueryIds = exports.XWAPaths = exports.NewsletterReactionSetting = exports.NewsletterState = exports.NewsletterRole = void 0
+exports.QueryIds =
+	exports.XWAPaths =
+	exports.NewsletterReactionSetting =
+	exports.NewsletterState =
+	exports.NewsletterRole =
+		void 0
 var NewsletterRole
 ;(function (NewsletterRole) {
 	NewsletterRole['SUBSCRIBER'] = 'SUBSCRIBER'
@@ -127,7 +132,7 @@ var QueryIds
 	QueryIds['ENFORCEMENTS'] = '27089116857425014' // NewsletterEnforcements
 	QueryIds['LINK_PREVIEW_CHECK'] = '24188786150796507' // NewsletterLinkPreviewCheck
 	QueryIds['UPDATE_VERIFICATION'] = '27133493439664458' // NewsletterUpdateVerification
-	QueryIds['LABEL_PAID_PARTNERSHIP'] = '26221505494211174' // NewsletterLabelPaidPartnership
+	QueryIds['LABEL_PAID_PARTNERSHIP'] = '26102375079404865' // NewsletterLabelPaidPartnership
 	// Newsletter Wamo (paid subscription)
 	QueryIds['WAMO_CHANGE_SUB'] = '25201342542835866' // NewsletterChangeWamoSub
 	QueryIds['WAMO_ENABLE_SUB'] = '25122474967344830' // NewsletterEnableWamoSub

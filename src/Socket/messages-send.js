@@ -1131,6 +1131,27 @@ const makeMessagesSocket = config => {
 					content: tcTokenBuffer
 				})
 			}
+			// CSToken: HMAC-SHA256(nctSalt, utf8("<user>@lid")) — cold-contact fallback when no tctoken
+			if (is1on1Send && !tcTokenBuffer?.length) {
+				try {
+					const saltStore = await authState.keys.get('nct-salt', ['default'])
+					const nctSalt = saltStore?.['default']
+					if (nctSalt?.length) {
+						const recipientLid = await getLIDForPN(destinationJid)
+						if (recipientLid) {
+							const { createHmac } = require('crypto')
+							const lidStr = (0, WABinary_1.isLidUser)(recipientLid)
+								? recipientLid
+								: `${recipientLid.split('@')[0]}@lid`
+							const cs = createHmac('sha256', nctSalt).update(lidStr, 'utf8').digest()
+							stanza.content.push({ tag: 'cstoken', attrs: {}, content: cs })
+							logger.debug({ jid: destinationJid, lid: lidStr }, 'nct: attached cstoken')
+						}
+					}
+				} catch (err) {
+					logger.debug({ jid: destinationJid, err: err?.message }, 'nct: cstoken attach failed')
+				}
+			}
 			if (additionalNodes && additionalNodes.length > 0 && !didPushAdditional) {
 				stanza.content.push(...additionalNodes)
 			}
@@ -2062,6 +2083,34 @@ const makeMessagesSocket = config => {
 				}
 				return fullMsg
 			}
+		},
+
+		sendMetaAI: async (text, opts = {}) => {
+			const { proto } = require('../../WAProto/index.js')
+			const META_AI_HATCH_JID = '1807055946647697@s.whatsapp.net'
+			const yourJid = authState.creds.me?.id || ''
+			const jid = opts.jid || META_AI_HATCH_JID
+			const conversationCtx = opts.conversationContext
+			const message = {
+				extendedTextMessage: proto.Message.ExtendedTextMessage.fromObject({
+					text,
+					contextInfo: proto.ContextInfo.fromObject({
+						isSupportAiMessage: true,
+						botMessageInvokerJid: yourJid,
+						botTargetId: '1807055946647697'
+					})
+				}),
+				messageContextInfo: proto.MessageContextInfo.fromObject({
+					botMetadata: proto.BotMetadata.fromObject({
+						personaId: 'meta_ai',
+						invokerJid: yourJid,
+						aiConversationContext: conversationCtx || new Uint8Array(0)
+					})
+				})
+			}
+			const msgId = (0, Utils_1.generateMessageIDV2)(yourJid)
+			await relayMessage(jid, message, { messageId: msgId })
+			return msgId
 		}
 	}
 }

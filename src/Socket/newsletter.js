@@ -294,19 +294,36 @@ const makeNewsletterSocket = config => {
 		 * Fetches the last `limit` messages and scans attrs for a matching message_id.
 		 */
 		newsletterGetServerId: async (jid, messageId, limit = 50) => {
-			const result = await query({
-				tag: 'iq',
-				attrs: {
-					id: generateMessageTag(),
-					type: 'get',
-					xmlns: 'newsletter',
-					to: jid
-				},
-				content: [{ tag: 'message_updates', attrs: { count: String(limit) } }]
-			})
+			console.log('[newsletterGetServerId] called jid:', jid, 'messageId:', messageId)
+			let result
+			try {
+				result = await query(
+					{
+						tag: 'iq',
+						attrs: {
+							id: generateMessageTag(),
+							type: 'get',
+							xmlns: 'newsletter',
+							to: jid
+						},
+						content: [{ tag: 'message_updates', attrs: { count: String(limit) } }]
+					},
+					5000
+				)
+			} catch (e) {
+				console.log('[newsletterGetServerId] query error/timeout:', e?.message)
+				return null
+			}
+			console.log('[newsletterGetServerId] result tag:', result?.tag, 'attrs:', JSON.stringify(result?.attrs))
 			if (!result) return null
 			const updatesNode = (0, WABinary_1.getBinaryNodeChild)(result, 'message_updates')
 			const messages = (0, WABinary_1.getBinaryNodeChildren)(updatesNode ?? result, 'message')
+			console.log(
+				'[newsletterGetServerId] messages count:',
+				messages.length,
+				'first attrs:',
+				JSON.stringify(messages[0]?.attrs)
+			)
 			for (const msg of messages) {
 				if (msg.attrs.message_id === messageId || msg.attrs.id === messageId) {
 					return msg.attrs.server_id ? +msg.attrs.server_id : null
@@ -920,9 +937,9 @@ const makeNewsletterSocket = config => {
 		 * @param {string} serverId - Server message ID
 		 * @param {boolean} isPaidPartnership
 		 */
-		newsletterLabelPaidPartnership: async (jid, serverId, isPaidPartnership) =>
+		newsletterLabelPaidPartnership: async (jid, serverId, messageType = 'MESSAGE') =>
 			executeWMexQuery(
-				{ newsletter_id: jid, server_id: serverId, is_paid_partnership: isPaidPartnership },
+				{ newsletter_id: jid, server_id: String(serverId), message_type: messageType },
 				Types_1.QueryIds.LABEL_PAID_PARTNERSHIP,
 				Types_1.XWAPaths.xwa2_newsletter_label_paid_partnership
 			),

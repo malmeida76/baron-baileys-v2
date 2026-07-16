@@ -4,6 +4,15 @@ A high-performance WhatsApp Web library built on [Baileys](https://github.com/Wh
 
 ---
 
+## Updated — 2026-07-16
+
+| Area | What changed |
+| --- | --- |
+| **CSToken / NCT** | NCT salt (`NctSaltSyncAction`, proto field 80) is now persisted to `authState.keys` under `nct-salt` when received via App-State-Sync. For 1-on-1 messages where no tctoken exists (cold contact), Baileys now computes `HMAC-SHA256(nctSalt, utf8("<user>@lid"))` and attaches it as `<cstoken>` in the outgoing stanza — matching WA Web behaviour. tctoken always takes priority; cstoken only fires as a fallback. |
+| **Meta AI (`sendMetaAI`)** | New `sock.sendMetaAI(text, opts?)` function. Sends to the Hatch bot JID (`1807055946647697@s.whatsapp.net`) with all required proto fields: `ContextInfo.isSupportAiMessage = true`, `botMessageInvokerJid`, `botTargetId`, `BotMetadata.personaId = "meta_ai"`, `invokerJid`, `aiConversationContext`. Responses arrive as normal `messages.upsert` events. Pass `opts.conversationContext` (bytes from a previous AI reply's `botMetadata.aiConversationContext`) for multi-turn conversations. |
+
+---
+
 ## Updated — 2026-07-03
 
 | Area | What changed |
@@ -686,6 +695,24 @@ await sock.sendAlbumMessage(
 ### Meta AI / Rich Responses
 
 ```js
+// Send a message to Meta AI (Hatch bot) and receive the reply via messages.upsert
+const msgId = await sock.sendMetaAI('Was ist die Hauptstadt von Deutschland?')
+
+// Multi-turn: pass aiConversationContext from the previous AI reply
+let conversationCtx
+sock.ev.on('messages.upsert', ({ messages }) => {
+  for (const msg of messages) {
+    if (msg.key.remoteJid !== '1807055946647697@s.whatsapp.net') continue
+    const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text
+    if (text) console.log('[Meta AI]', text)
+    const ctx = msg.message?.messageContextInfo?.botMetadata?.aiConversationContext
+    if (ctx?.length) conversationCtx = ctx
+  }
+})
+
+// Follow-up in the same conversation thread
+await sock.sendMetaAI('Und die Bevölkerung?', { conversationContext: conversationCtx })
+
 // Rich AI response (table, list, code, LaTeX)
 await sock.sendRichAIResponse(jid, {
 	table: {

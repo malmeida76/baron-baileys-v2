@@ -48,7 +48,8 @@ const makeMessagesRecvSocket = config => {
 		messageRetryManager,
 		issuePrivacyTokens,
 		getUSyncDevices,
-		createParticipantNodes
+		createParticipantNodes,
+		newsletterServerIdCache
 	} = sock
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 	// Track when the socket fully opens so pending pre-connect messages are treated as history
@@ -445,16 +446,22 @@ const makeMessagesRecvSocket = config => {
 		const timestamp = t ? +t : undefined
 		const isSender = is_sender === 'true'
 		const offlineIndex = offline !== undefined ? +offline : undefined
+		// Cache messageId → serverId so the bot can look up server_id when a message is quoted
+		if (id && serverId != null) {
+			newsletterServerIdCache?.set(id, serverId)
+		}
 
 		// Parse optional <meta> child: edit timestamps, interaction type, admin profile
 		const metaNode = (0, WABinary_1.getBinaryNodeChild)(node, 'meta')
-		const meta = metaNode ? {
-			...(metaNode.attrs.msg_edit_t ? { editedAt: +metaNode.attrs.msg_edit_t } : {}),
-			...(metaNode.attrs.original_msg_t ? { originalTimestamp: +metaNode.attrs.original_msg_t } : {}),
-			...(metaNode.attrs.interaction_type ? { interactionType: metaNode.attrs.interaction_type } : {}),
-			...(metaNode.attrs.parent_server_id ? { parentServerId: +metaNode.attrs.parent_server_id } : {}),
-			...(metaNode.attrs.response_server_id ? { responseServerId: +metaNode.attrs.response_server_id } : {}),
-		} : undefined
+		const meta = metaNode
+			? {
+					...(metaNode.attrs.msg_edit_t ? { editedAt: +metaNode.attrs.msg_edit_t } : {}),
+					...(metaNode.attrs.original_msg_t ? { originalTimestamp: +metaNode.attrs.original_msg_t } : {}),
+					...(metaNode.attrs.interaction_type ? { interactionType: metaNode.attrs.interaction_type } : {}),
+					...(metaNode.attrs.parent_server_id ? { parentServerId: +metaNode.attrs.parent_server_id } : {}),
+					...(metaNode.attrs.response_server_id ? { responseServerId: +metaNode.attrs.response_server_id } : {})
+				}
+			: undefined
 
 		// Parse engagement counters
 		const viewsNode = (0, WABinary_1.getBinaryNodeChild)(node, 'views_count')
@@ -462,8 +469,9 @@ const makeMessagesRecvSocket = config => {
 		const responsesNode = (0, WABinary_1.getBinaryNodeChild)(node, 'responses_count')
 		const responsesCount = responsesNode?.attrs?.count !== undefined ? +responsesNode.attrs.count : undefined
 		const reactionsNode = (0, WABinary_1.getBinaryNodeChild)(node, 'reactions')
-		const reactionCounts = (0, WABinary_1.getBinaryNodeChildren)(reactionsNode ?? { content: [] }, 'reaction')
-			.map(r => ({ code: r.attrs.code, count: +r.attrs.count }))
+		const reactionCounts = (0, WABinary_1.getBinaryNodeChildren)(reactionsNode ?? { content: [] }, 'reaction').map(
+			r => ({ code: r.attrs.code, count: +r.attrs.count })
+		)
 
 		let content = null
 		let mediaType = undefined
@@ -491,7 +499,7 @@ const makeMessagesRecvSocket = config => {
 		}
 
 		// Send ACK back to server
-		const ackType = type === 'reaction' ? 'reaction' : (edit ? 'revoke' : type)
+		const ackType = type === 'reaction' ? 'reaction' : edit ? 'revoke' : type
 		await sendNode({
 			tag: 'ack',
 			attrs: { id, to: from, class: 'status', type: ackType || 'text' },
@@ -500,6 +508,7 @@ const makeMessagesRecvSocket = config => {
 
 		ev.emit('newsletter.status', {
 			id: from,
+			messageId: id,
 			serverId,
 			timestamp,
 			isSender,
@@ -2419,9 +2428,15 @@ const makeMessagesRecvSocket = config => {
 			}
 			// delete data once call has ended
 			if (
-				status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate' ||
-				status === 'reject_do_not_disturb' || status === 'mic_permission_denied' ||
-				status === 'camera_permission_denied' || status === 'remote_busy' || status === 'remote_offline'
+				status === 'reject' ||
+				status === 'accept' ||
+				status === 'timeout' ||
+				status === 'terminate' ||
+				status === 'reject_do_not_disturb' ||
+				status === 'mic_permission_denied' ||
+				status === 'camera_permission_denied' ||
+				status === 'remote_busy' ||
+				status === 'remote_offline'
 			) {
 				await callOfferCache.del(call.id)
 			}
@@ -2438,9 +2453,22 @@ const makeMessagesRecvSocket = config => {
 	// This additively handles those: emit a 'call' event for state stanzas and ack ALL
 	// of them (otherwise WhatsApp keeps redelivering). The <call> path above is untouched.
 	const CALL_STATE_TAGS = new Set([
-		'offer', 'offer_notice', 'terminate', 'accept', 'reject', 'preaccept', 'accept_ack',
-		'enc-rekey', 'enc_rekey', 'peer_state', 'group_info', 'video_state', 'video_state_ack', 'flow_control',
-		'mute_v2', 'waiting_room_request'
+		'offer',
+		'offer_notice',
+		'terminate',
+		'accept',
+		'reject',
+		'preaccept',
+		'accept_ack',
+		'enc-rekey',
+		'enc_rekey',
+		'peer_state',
+		'group_info',
+		'video_state',
+		'video_state_ack',
+		'flow_control',
+		'mute_v2',
+		'waiting_room_request'
 	])
 	const handleStandaloneCallStanza = async node => {
 		try {
@@ -2491,8 +2519,7 @@ const makeMessagesRecvSocket = config => {
 				call.enabled = enabledRaw === 'true' || enabledRaw === '1'
 			} else if (status === 'enc_rekey') {
 				const rekeyChild =
-					(0, WABinary_1.getBinaryNodeChild)(node, 'enc-rekey') ||
-					(0, WABinary_1.getBinaryNodeChild)(node, 'enc_rekey')
+					(0, WABinary_1.getBinaryNodeChild)(node, 'enc-rekey') || (0, WABinary_1.getBinaryNodeChild)(node, 'enc_rekey')
 				if (rekeyChild?.content && Buffer.isBuffer(rekeyChild.content)) {
 					try {
 						call.rekeyPayload = (0, Utils_1.decodeE2eRekeyPayload)(rekeyChild.content)
@@ -2513,11 +2540,18 @@ const makeMessagesRecvSocket = config => {
 					call.muted = am === 'true' || am === '1' || am === true
 				}
 			}
-			if (callId && (
-				status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate' ||
-				status === 'reject_do_not_disturb' || status === 'mic_permission_denied' ||
-				status === 'camera_permission_denied' || status === 'remote_busy' || status === 'remote_offline'
-			)) {
+			if (
+				callId &&
+				(status === 'reject' ||
+					status === 'accept' ||
+					status === 'timeout' ||
+					status === 'terminate' ||
+					status === 'reject_do_not_disturb' ||
+					status === 'mic_permission_denied' ||
+					status === 'camera_permission_denied' ||
+					status === 'remote_busy' ||
+					status === 'remote_offline')
+			) {
 				await callOfferCache.del(callId)
 			}
 			await normalizeCallEventJids(call, node)

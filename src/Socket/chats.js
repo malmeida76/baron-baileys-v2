@@ -91,6 +91,8 @@ const makeChatsSocket = config => {
 	// Collections blocked on missing app state sync keys (mirrors WA Web's "Blocked" state).
 	// When a key arrives via APP_STATE_SYNC_KEY_SHARE, these are re-synced.
 	const blockedCollections = new Set()
+	/** messageId → numeric server_id for newsletter messages (persists within session) */
+	const _nlServerIdCache = new Map()
 	const placeholderResendCache =
 		config.placeholderResendCache ||
 		new node_cache_1.default({
@@ -144,7 +146,8 @@ const makeChatsSocket = config => {
 			// A. Syncd anti-tampering fatal-exception gate.
 			const syncdAntiTamperingEnabled =
 				privacyNode?.attrs?.syncd_anti_tampering_fatal_exception_enabled === 'true' ||
-				(0, WABinary_1.getBinaryNodeChild)(privacyNode, 'syncd_anti_tampering')?.attrs?.fatal_exception_enabled === 'true'
+				(0, WABinary_1.getBinaryNodeChild)(privacyNode, 'syncd_anti_tampering')?.attrs?.fatal_exception_enabled ===
+					'true'
 
 			// B. Syncd key-index rotation gate.
 			const keyRotationEnabled =
@@ -777,7 +780,7 @@ const makeChatsSocket = config => {
 								closeTime: attrs?.close_time ?? null,
 								mode: attrs?.mode ?? null
 							}))
-					  }
+						}
 					: null,
 				catalogStatus,
 				cartEnabled,
@@ -819,6 +822,13 @@ const makeChatsSocket = config => {
 					isInitialSync ? { accountSettings: authState.creds.accountSettings } : undefined,
 					logger
 				)
+				// Persist NCT salt received via App-State-Sync (SyncActionValue field 80)
+				const _nctSalt = mutation?.syncAction?.value?.nctSaltSyncAction?.salt
+				if (_nctSalt?.length) {
+					authState.keys
+						.set({ 'nct-salt': { default: Buffer.from(_nctSalt) } })
+						.catch(err => logger.debug({ err: err?.message }, 'nct: failed to persist salt'))
+				}
 			}
 		}
 	}
@@ -1104,7 +1114,10 @@ const makeChatsSocket = config => {
 		const write = {}
 		for (const { jid, privacyToken, privacyModeTs } of entries) {
 			if (!jid || !privacyToken?.length) continue
-			write[jid] = { token: Buffer.isBuffer(privacyToken) ? privacyToken : Buffer.from(privacyToken), ts: String(privacyModeTs || '') }
+			write[jid] = {
+				token: Buffer.isBuffer(privacyToken) ? privacyToken : Buffer.from(privacyToken),
+				ts: String(privacyModeTs || '')
+			}
 		}
 		if (Object.keys(write).length) {
 			await authState.keys.set({ 'privacy-token': write })
@@ -1828,10 +1841,12 @@ const makeChatsSocket = config => {
 		// Persist AB prop feature flags into connection credentials so they survive reconnect.
 		const abCredsUpdate = {}
 		if ('stella_interop_enabled' in abProps) {
-			abCredsUpdate.interopEnabled = abProps['stella_interop_enabled'] === 'true' || abProps['stella_interop_enabled'] === '1'
+			abCredsUpdate.interopEnabled =
+				abProps['stella_interop_enabled'] === 'true' || abProps['stella_interop_enabled'] === '1'
 		}
 		if ('stella_ios_enabled' in abProps) {
-			abCredsUpdate.interopIosEnabled = abProps['stella_ios_enabled'] === 'true' || abProps['stella_ios_enabled'] === '1'
+			abCredsUpdate.interopIosEnabled =
+				abProps['stella_ios_enabled'] === 'true' || abProps['stella_ios_enabled'] === '1'
 		}
 		if ('md_privacy_v2' in abProps) {
 			abCredsUpdate.mdPrivacyV2 = abProps['md_privacy_v2'] === 'true' || abProps['md_privacy_v2'] === '1'
@@ -1859,6 +1874,18 @@ const makeChatsSocket = config => {
 		}
 	}
 	const upsertMessage = ev.createBufferedFunction(async (msg, type) => {
+		// Cache newsletter server_id for use when this message is later quoted
+		if (msg.newsletter && msg.newsletter_server_id && msg.key?.id) {
+			_nlServerIdCache.set(msg.key.id, msg.newsletter_server_id)
+		}
+		// If this message quotes a newsletter post, enrich it with the cached server_id
+		if (msg.message) {
+			const ci = Object.values(msg.message).find(v => v?.contextInfo)?.contextInfo
+			if (ci?.stanzaId && (0, WABinary_1.isJidNewsletter)(ci.remoteJid)) {
+				const sid = _nlServerIdCache.get(ci.stanzaId)
+				if (sid != null) msg.quotedNewsletterServerId = sid
+			}
+		}
 		ev.emit('messages.upsert', { messages: [msg], type })
 		if (!!msg.pushName) {
 			let jid = msg.key.fromMe ? authState.creds.me.id : msg.key.participant || msg.key.remoteJid
@@ -2185,7 +2212,8 @@ const makeChatsSocket = config => {
 		fetchQRCode,
 		confirmDeviceLogout,
 		storePrivacyTokens,
-		executeUSyncQuery
+		executeUSyncQuery,
+		newsletterServerIdCache: _nlServerIdCache
 	}
 }
 exports.makeChatsSocket = makeChatsSocket

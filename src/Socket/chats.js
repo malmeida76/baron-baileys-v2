@@ -1748,6 +1748,51 @@ const makeChatsSocket = config => {
 		})
 	}
 	/**
+	 * Build and push the companion's signed key-index-list on (re)connect.
+	 *
+	 * The official client sends this within ~0.8s of every session start (xmlns="md").
+	 * A companion that never re-asserts its ADV key index is treated as unverified and
+	 * gets <conflict type="device_removed"/>.
+	 *
+	 * Payload construction mirrors CompanionDeviceAdvUtil.A02 (C19350ud) from the APK:
+	 *   details            = proto ADVKeyIndexList { rawId, timestamp, currentIndex, validIndexes, accountType }
+	 *   accountSignature   = Curve.sign(signedIdentityKey.private, [6,2] || details)
+	 *   accountSignatureKey = only attached for HOSTED accounts (skipped for consumer E2EE)
+	 * The signature uses our own device identity key (the same key that produces the ADV
+	 * deviceSignature during pairing) — a companion cannot re-sign with the account key.
+	 */
+	const sendKeyIndexList = async () => {
+		const account = authState.creds.account
+		const signedIdentityKey = authState.creds.signedIdentityKey
+		if (!account?.details || !signedIdentityKey?.private) {
+			logger.debug('no ADV account / signed identity key, skipping key-index-list')
+			return
+		}
+		const deviceIdentity = index_js_1.proto.ADVDeviceIdentity.decode(account.details)
+		const keyIndex = deviceIdentity.keyIndex || 0
+		const accountType = deviceIdentity.accountType ?? index_js_1.proto.ADVEncryptionType.E2EE
+		const isHosted = accountType === index_js_1.proto.ADVEncryptionType.HOSTED
+		const ts = Math.floor(Date.now() / 1000)
+		const details = index_js_1.proto.ADVKeyIndexList.encode({
+			rawId: deviceIdentity.rawId || 0,
+			timestamp: ts,
+			currentIndex: keyIndex,
+			validIndexes: [keyIndex],
+			accountType
+		}).finish()
+		const sigPrefix = isHosted
+			? Defaults_1.WA_ADV_HOSTED_KEY_INDEX_LIST_SIG_PREFIX
+			: Defaults_1.WA_ADV_KEY_INDEX_LIST_SIG_PREFIX
+		const accountSignature = Utils_1.Curve.sign(signedIdentityKey.private, Buffer.concat([sigPrefix, details]))
+		const signedKeyIndexList = { details, accountSignature }
+		if (isHosted && account.accountSignatureKey?.length) {
+			signedKeyIndexList.accountSignatureKey = account.accountSignatureKey
+		}
+		const content = index_js_1.proto.ADVSignedKeyIndexList.encode(signedKeyIndexList).finish()
+		await updateKeyIndexList(ts, Buffer.from(content))
+		logger.info({ ts, keyIndex }, 'sent key-index-list')
+	}
+	/**
 	 * Request a media upload connection token from the server.
 	 * Mirrors MediaConnFetcher — xmlns="w:m", type="set", optional last_id.
 	 * Returns the raw media_conn node.
@@ -1803,6 +1848,8 @@ const makeChatsSocket = config => {
 		await query({
 			tag: 'iq',
 			attrs: {
+				// reuse the challenge id at the iq level too, matching AccountDefenceDeviceLogoutJob
+				id: String(id),
 				to: WABinary_1.S_WHATSAPP_NET,
 				xmlns: 'w:account_defence',
 				type: 'set',
@@ -2003,6 +2050,20 @@ const makeChatsSocket = config => {
 	})
 	ws.on('CB:presence', handlePresenceUpdate)
 	ws.on('CB:chatstate', handlePresenceUpdate)
+	// Server device-legitimacy challenge (w:account_defence). Fires a few seconds after the
+	// companion sends its first message; if we don't approve within ~20s the device is removed
+	// with <conflict type="device_removed"/>. Wire the inbound challenge to confirmDeviceLogout.
+	ws.on('CB:iq,xmlns:w:account_defence', async node => {
+		const deviceLogout = (0, WABinary_1.getBinaryNodeChild)(node, 'device_logout')
+		if (!deviceLogout) return
+		const id = node.attrs.id
+		logger.info({ id }, 'received account_defence device_logout challenge, approving')
+		try {
+			await confirmDeviceLogout(id, true)
+		} catch (error) {
+			onUnexpectedError(error, 'account_defence device_logout approve')
+		}
+	})
 	ws.on('CB:ib,,dirty', async node => {
 		const { attrs } = (0, WABinary_1.getBinaryNodeChild)(node, 'dirty')
 		const type = attrs.type
@@ -2038,6 +2099,9 @@ const makeChatsSocket = config => {
 			sendPresenceUpdate(markOnlineOnConnect ? 'available' : 'unavailable').catch(error =>
 				onUnexpectedError(error, 'presence update requests')
 			)
+			// Re-assert our ADV key index to the server on every (re)connect, or the companion
+			// is treated as unverified and removed. Best-effort: never block the open flow.
+			sendKeyIndexList().catch(error => onUnexpectedError(error, 'send key-index-list'))
 		}
 		if (!receivedPendingNotifications || syncState !== State_1.SyncState.Connecting) {
 			return
@@ -2211,6 +2275,8 @@ const makeChatsSocket = config => {
 		deleteBroadcastList,
 		fetchQRCode,
 		confirmDeviceLogout,
+		updateKeyIndexList,
+		sendKeyIndexList,
 		storePrivacyTokens,
 		executeUSyncQuery,
 		newsletterServerIdCache: _nlServerIdCache

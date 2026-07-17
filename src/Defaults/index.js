@@ -26,6 +26,8 @@ exports.VERSION =
 	exports.PLACEHOLDER_MAX_AGE_SECONDS =
 	exports.STATUS_EXPIRY_SECONDS =
 	exports.WA_DEFAULT_EPHEMERAL =
+	exports.WA_ADV_HOSTED_KEY_INDEX_LIST_SIG_PREFIX =
+	exports.WA_ADV_KEY_INDEX_LIST_SIG_PREFIX =
 	exports.WA_ADV_HOSTED_DEVICE_SIG_PREFIX =
 	exports.WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX =
 	exports.WA_ADV_DEVICE_SIG_PREFIX =
@@ -56,6 +58,9 @@ exports.WA_ADV_ACCOUNT_SIG_PREFIX = Buffer.from([6, 0])
 exports.WA_ADV_DEVICE_SIG_PREFIX = Buffer.from([6, 1])
 exports.WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX = Buffer.from([6, 5])
 exports.WA_ADV_HOSTED_DEVICE_SIG_PREFIX = Buffer.from([6, 6])
+// Prefix for the key-index-list ADV signature (CompanionDeviceAdvUtil, C08C.A0J / A0K)
+exports.WA_ADV_KEY_INDEX_LIST_SIG_PREFIX = Buffer.from([6, 2])
+exports.WA_ADV_HOSTED_KEY_INDEX_LIST_SIG_PREFIX = Buffer.from([6, 7])
 exports.WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
 /** Status messages older than 24 hours are considered expired */
 exports.STATUS_EXPIRY_SECONDS = 24 * 60 * 60
